@@ -20,3 +20,4 @@ O site é publicado automaticamente pelo workflow de GitHub Pages.
 - O recebimento pode ser marcado no painel e fica registrado no histórico de eventos.
 - O plano comercial pode ser mensal, anual, personalizado ou sem vencimento.
 - Licenças mensais avisam o cliente automaticamente nos três dias anteriores ao vencimento.
+- O botão **Plano e cobrança** atualiza os dados comerciais da licença ativa sem emitir outra contrassenha.
