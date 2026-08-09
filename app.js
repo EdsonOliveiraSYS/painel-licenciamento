@@ -3,13 +3,15 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='ed-systems-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],selected=null,issuing=false,editingBilling=null,savingBilling=false,delinquencies=[];
+let session=null,installations=[],financialCharges=[],selected=null,issuing=false,editingBilling=null,savingBilling=false,delinquencies=[];
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
 const formatDateOnly=value=>value?new Date(`${String(value).slice(0,10)}T00:00:00`).toLocaleDateString('pt-BR'):'—';
 const formatMoneyCents=value=>(Number(value||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const todayIso=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now-offset).toISOString().slice(0,10);};
+const currentMonthIso=()=>todayIso().slice(0,7);
+const monthBounds=value=>{const match=/^(\d{4})-(\d{2})$/.exec(value||'');if(!match)return null;const year=Number(match[1]),month=Number(match[2]);if(month<1||month>12)return null;const start=`${year}-${String(month).padStart(2,'0')}-01`,next=new Date(Date.UTC(year,month,1)),end=next.toISOString().slice(0,10);return {start,end,startTime:`${start}T00:00:00.000Z`,endTime:`${end}T00:00:00.000Z`};};
 const addLocalMonthsIso=months=>{const now=new Date(),day=now.getDate();now.setDate(1);now.setMonth(now.getMonth()+months);const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();now.setDate(Math.min(day,lastDay));return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);};
 const saveSession=value=>{session=value;if(value)sessionStorage.setItem(SESSION_KEY,JSON.stringify(value));else sessionStorage.removeItem(SESSION_KEY);};
 const showToast=(message,error=false)=>{const element=$('toast');element.textContent=message;element.className=`toast${error?' error-toast':''}`;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>element.classList.add('hidden'),3500);};
@@ -44,14 +46,28 @@ async function login(event){
 }
 
 function openDashboard(){$('accountEmail').textContent=session.user?.email||'';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);installations=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function logout(){saveSession(null);installations=[];financialCharges=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+
+async function loadFinancialCharges(renderAfter=true){
+  const bounds=monthBounds($('financeMonth').value);if(!bounds)return;
+  $('financeMetrics').innerHTML='<article class="finance-card"><span>Atualizando</span><strong>...</strong></article>';
+  const fields='id,academy_id,amount_cents,due_date,status,paid_at,billing_cycle';
+  const [dueRows,paidRows]=await Promise.all([
+    api(`/rest/v1/license_charges?select=${fields}&due_date=gte.${bounds.start}&due_date=lt.${bounds.end}&order=due_date.desc`),
+    api(`/rest/v1/license_charges?select=${fields}&paid_at=gte.${encodeURIComponent(bounds.startTime)}&paid_at=lt.${encodeURIComponent(bounds.endTime)}&order=paid_at.desc`)
+  ]);
+  financialCharges=[...new Map([...(dueRows||[]),...(paidRows||[])].map(charge=>[charge.id,charge])).values()];
+  if(renderAfter)renderFinancialSummary();
+}
 
 async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
     await ensureAdmin();
     const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
-    installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];render();
+    installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];
+    try{await loadFinancialCharges(false);}catch(error){financialCharges=[];$('financeCaption').textContent=`Não foi possível carregar o financeiro: ${error.message}`;}
+    render();
   }catch(error){$('installationList').innerHTML=`<div class="empty">${escapeHtml(error.message)}</div>`;if(/sessão|autorizada/i.test(error.message))logout();}
 }
 
@@ -60,6 +76,7 @@ function render(){
   delinquencies=installations.flatMap(item=>(item.licenses||[]).map(license=>({license,installation:item,academy:item.academies||{}}))).filter(item=>Number(item.license.billing_amount_cents)>0&&['pending','overdue'].includes(item.license.billing_status)&&item.license.billing_due_date&&item.license.billing_due_date<todayIso());
   const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.license.billing_amount_cents||0),0);
   $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  renderFinancialSummary();
   renderDelinquencies(overdueTotal);
   const query=$('search').value.trim().toLowerCase(),status=$('statusFilter').value;
   const filtered=installations.filter(item=>{const academy=item.academies||{};return(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
@@ -70,6 +87,21 @@ function render(){
     const cycleLabel={monthly:'Mensalidade',annual:'Anuidade',custom:'Personalizada',perpetual:'Sem vencimento'}[activeLicense?.billing_cycle]||'—';
     return `<article class="installation"><div><h3>${escapeHtml(academy.name||'Academia em configuração')}</h3><span class="badge ${item.status}">${labels[item.status]||item.status}</span><div class="muted">CNPJ: ${escapeHtml(academy.cnpj||'não informado')}</div></div><div class="facts"><div><strong>Instalação:</strong> ${formatDate(item.installed_at)}</div><div><strong>Último contato:</strong> ${formatDate(item.last_seen_at)}</div><div><strong>Versão:</strong> ${escapeHtml(item.app_version||'—')}</div></div><div class="facts"><div><strong>Plano:</strong> ${cycleLabel}</div><div><strong>Licença até:</strong> ${formatDate(activeLicense?.expires_at)}</div><div class="muted">${escapeHtml(item.installation_id)}</div></div><div class="actions"><button class="button primary" data-issue="${item.id}" type="button">Licenciar</button>${activeLicense?`<button class="button secondary" data-billing="${item.id}" type="button">Plano e cobrança</button>`:''}<button class="button secondary" data-status="${blocked?'trial':'blocked'}" data-id="${item.id}" type="button">${blocked?'Desbloquear':'Bloquear'}</button><button class="button secondary" data-status="inactive" data-id="${item.id}" type="button">Inativar</button></div></article>`;
   }).join('');
+}
+
+function renderFinancialSummary(){
+  const bounds=monthBounds($('financeMonth').value);if(!bounds)return;
+  const due=financialCharges.filter(charge=>charge.due_date>=bounds.start&&charge.due_date<bounds.end),paid=financialCharges.filter(charge=>charge.paid_at&&charge.paid_at>=bounds.startTime&&charge.paid_at<bounds.endTime);
+  const expected=due.filter(charge=>!['cancelled','waived'].includes(charge.status)).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const received=paid.reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const open=due.filter(charge=>['pending','overdue'].includes(charge.status)).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const overdue=due.filter(charge=>charge.status==='overdue'||(charge.status==='pending'&&charge.due_date<todayIso())).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  $('financeMetrics').innerHTML=[['Receita prevista',expected,''],['Recebida no mês',received,'received'],['Em aberto',open,''],['Vencida',overdue,'overdue']].map(([label,value,className])=>`<article class="finance-card ${className}"><span>${label}</span><strong>${formatMoneyCents(value)}</strong></article>`).join('');
+  $('financeCaption').textContent=`${due.length} cobrança(s) com vencimento no período e ${paid.length} pagamento(s) recebido(s).`;
+  const academyName=id=>installations.find(item=>item.academy_id===id)?.academies?.name||'Academia';
+  const statusLabels={pending:'Pendente',paid:'Paga',overdue:'Vencida',waived:'Isenta',cancelled:'Cancelada'};
+  const recent=[...financialCharges].sort((a,b)=>String(b.paid_at||b.due_date).localeCompare(String(a.paid_at||a.due_date))).slice(0,8);
+  $('financeRecent').innerHTML=recent.length?recent.map(charge=>`<div class="finance-row"><strong>${escapeHtml(academyName(charge.academy_id))}</strong><span>Vence ${formatDateOnly(charge.due_date)}</span><span>${statusLabels[charge.status]||escapeHtml(charge.status)}</span><strong>${formatMoneyCents(charge.amount_cents)}</strong></div>`).join(''):'<div class="finance-empty">Ainda não existem cobranças neste período.</div>';
 }
 
 function renderDelinquencies(total){
@@ -143,8 +175,9 @@ async function setStatus(id,status){
   }catch(error){showToast(error.message,true);}
 }
 
-$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();}});
+$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();}});
 $('billingEditNoticeEnabled').addEventListener('change',toggleBillingAutomation);
 $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomation);
 
+$('financeMonth').value=currentMonthIso();
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();

@@ -42,6 +42,14 @@
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" aria-label="Resumo das licenças"></section>
+      <section class="finance-overview" aria-labelledby="financeOverviewTitle">
+        <div class="finance-overview-head">
+          <div><p class="eyebrow">RESULTADO FINANCEIRO</p><h2 id="financeOverviewTitle">Receitas do licenciamento</h2><p id="financeCaption">Resumo das cobranças do período selecionado.</p></div>
+          <label for="financeMonth">Período<input id="financeMonth" type="month"></label>
+        </div>
+        <div id="financeMetrics" class="finance-metrics" aria-live="polite"></div>
+        <div id="financeRecent" class="finance-recent"></div>
+      </section>
       <section class="toolbar" aria-label="Filtros">
         <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
         <select id="statusFilter">
