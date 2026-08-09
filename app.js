@@ -187,7 +187,7 @@ async function issue(){
 async function markPaid(chargeId){
   if(!confirm('Confirmar o recebimento desta cobrança?'))return;
   const item=delinquencies.find(entry=>entry.charge.id===chargeId);
-  try{if(!item)throw new Error('Cobrança não encontrada.');const result=await api('/functions/v1/license-billing-update',{method:'POST',body:{action:'mark_charge_paid',chargeId}});showToast(result.renewed?'Cobrança paga e próximo vencimento gerado.':result.historical?'Cobrança histórica marcada como paga.':'Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message==='charge_not_payable'?'Esta cobrança não está mais aberta para pagamento.':error.message,true);}
+  try{if(!item)throw new Error('Cobrança não encontrada.');const result=await api('/functions/v1/license-billing-update',{method:'POST',body:{action:'mark_charge_paid',chargeId}});showToast(result.reactivated?'Pagamento confirmado e sistema reativado automaticamente.':result.renewed?'Cobrança paga e próximo vencimento gerado.':result.historical?'Cobrança histórica marcada como paga.':'Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message==='charge_not_payable'?'Esta cobrança não está mais aberta para pagamento.':error.message,true);}
 }
 
 async function sendBillingEmail(licenseId){
