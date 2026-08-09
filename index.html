@@ -50,6 +50,10 @@
         <div id="financeMetrics" class="finance-metrics" aria-live="polite"></div>
         <div id="financeRecent" class="finance-recent"></div>
       </section>
+      <section class="template-panel" aria-labelledby="templatePanelTitle">
+        <div class="template-panel-head"><div><p class="eyebrow">COMUNICAÇÃO</p><h2 id="templatePanelTitle">Modelos de mensagens</h2><p>Textos utilizados nos avisos internos e preparados para WhatsApp/e-mail.</p></div><button id="editTemplatesButton" class="button secondary" type="button">Editar modelos</button></div>
+        <div id="templateSummary" class="template-summary"></div>
+      </section>
       <section class="toolbar" aria-label="Filtros">
         <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
         <select id="statusFilter">
@@ -116,6 +120,18 @@
       </section>
       <p id="billingEditError" class="error" role="alert" aria-live="polite"></p>
       <div class="modal-actions"><button data-close-billing class="button secondary" type="button">Cancelar</button><button id="billingSaveButton" class="button primary" type="button">Salvar plano e cobrança</button></div>
+    </div>
+  </div>
+  <div id="templateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle">
+    <div class="modal-card">
+      <div class="modal-head"><div><p class="eyebrow">COMUNICAÇÃO</p><h2 id="templateModalTitle">Editar modelos de mensagens</h2></div><button class="icon-button" data-close-template type="button" aria-label="Fechar">×</button></div>
+      <label for="templateSelect">Tipo de mensagem</label><select id="templateSelect"></select>
+      <label class="checkbox"><input id="templateEnabled" type="checkbox" checked> Modelo ativo</label>
+      <label for="templateSubject">Título ou assunto</label><input id="templateSubject" type="text" maxlength="160">
+      <label for="templateBody">Texto da mensagem</label><textarea id="templateBody" rows="6" maxlength="1200"></textarea>
+      <div class="placeholder-note"><strong>Campos disponíveis</strong><span>{academia} · {valor} · {vencimento} · {dias}</span></div>
+      <p id="templateError" class="error" role="alert" aria-live="polite"></p>
+      <div class="modal-actions"><button data-close-template class="button secondary" type="button">Cancelar</button><button id="templateSaveButton" class="button primary" type="button">Salvar modelo</button></div>
     </div>
   </div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
