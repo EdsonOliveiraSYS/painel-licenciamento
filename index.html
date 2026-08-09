@@ -102,6 +102,10 @@
         <label for="billingEditGraceDays">Período de tolerância antes do bloqueio (dias)</label><input id="billingEditGraceDays" type="number" min="0" max="30" step="1" value="3">
         <p class="provider-note">O aviso interno e o bloqueio automático funcionam agora. O envio real por WhatsApp/e-mail será ativado quando o fornecedor for configurado.</p>
       </section>
+      <section class="charge-history" aria-labelledby="billingHistoryTitle">
+        <div class="history-head"><h3 id="billingHistoryTitle">Histórico de cobranças</h3><span>Pagamentos e próximos vencimentos</span></div>
+        <div id="billingHistoryList" class="billing-history-list"><div class="billing-empty">Carregando histórico...</div></div>
+      </section>
       <p id="billingEditError" class="error" role="alert" aria-live="polite"></p>
       <div class="modal-actions"><button data-close-billing class="button secondary" type="button">Cancelar</button><button id="billingSaveButton" class="button primary" type="button">Salvar plano e cobrança</button></div>
     </div>
