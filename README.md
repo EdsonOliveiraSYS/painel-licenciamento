@@ -11,3 +11,10 @@ Painel web estático e responsivo para GitHub Pages. A autenticação, autoriza�
 - A sessão é mantida somente na aba atual por `sessionStorage`.
 
 O site é publicado automaticamente pelo workflow de GitHub Pages.
+
+## Financeiro do licenciamento
+
+- Cada nova licença pode ser cortesia ou receber valor e data de vencimento.
+- Cobranças vencidas aparecem na área de inadimplências do painel.
+- A exportação CSV inclui nome, CNPJ, razão social, WhatsApp, e-mail, vencimento e valor.
+- O recebimento pode ser marcado no painel e fica registrado no histórico de eventos.

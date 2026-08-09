@@ -3,10 +3,13 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='ed-systems-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],selected=null,issuing=false;
+let session=null,installations=[],selected=null,issuing=false,delinquencies=[];
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
+const formatDateOnly=value=>value?new Date(`${String(value).slice(0,10)}T00:00:00`).toLocaleDateString('pt-BR'):'—';
+const formatMoneyCents=value=>(Number(value||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const todayIso=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now-offset).toISOString().slice(0,10);};
 const saveSession=value=>{session=value;if(value)sessionStorage.setItem(SESSION_KEY,JSON.stringify(value));else sessionStorage.removeItem(SESSION_KEY);};
 const showToast=(message,error=false)=>{const element=$('toast');element.textContent=message;element.className=`toast${error?' error-toast':''}`;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>element.classList.add('hidden'),3500);};
 
@@ -46,14 +49,17 @@ async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
     await ensureAdmin();
-    const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes)');
+    const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_amount_cents,billing_due_date,billing_status,paid_at)');
     installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];render();
   }catch(error){$('installationList').innerHTML=`<div class="empty">${escapeHtml(error.message)}</div>`;if(/sessão|autorizada/i.test(error.message))logout();}
 }
 
 function render(){
   const count=status=>installations.filter(item=>item.status===status).length;
-  $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  delinquencies=installations.flatMap(item=>(item.licenses||[]).map(license=>({license,installation:item,academy:item.academies||{}}))).filter(item=>Number(item.license.billing_amount_cents)>0&&['pending','overdue'].includes(item.license.billing_status)&&item.license.billing_due_date&&item.license.billing_due_date<todayIso());
+  const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.license.billing_amount_cents||0),0);
+  $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  renderDelinquencies(overdueTotal);
   const query=$('search').value.trim().toLowerCase(),status=$('statusFilter').value;
   const filtered=installations.filter(item=>{const academy=item.academies||{};return(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
   if(!filtered.length){$('installationList').innerHTML='<div class="empty">Nenhuma instalação encontrada.</div>';return;}
@@ -64,16 +70,40 @@ function render(){
   }).join('');
 }
 
-function openLicense(id){selected=installations.find(item=>item.id===id);if(!selected)return;$('licenseAcademy').textContent=`${selected.academies?.name||'Academia'} · ${selected.installation_id}`;$('licenseDays').value=365;$('licenseNotes').value='';$('licensePerpetual').checked=false;$('licenseResult').classList.add('hidden');$('licenseToken').value='';$('modalError').textContent='';$('licenseModal').classList.remove('hidden');$('licenseDays').focus();}
+function renderDelinquencies(total){
+  $('billingSummary').textContent=delinquencies.length?`${delinquencies.length} cobrança(s) vencida(s), totalizando ${formatMoneyCents(total)}.`:'Nenhuma cobrança vencida.';
+  $('exportDelinquency').disabled=!delinquencies.length;
+  if(!delinquencies.length){$('delinquencyList').innerHTML='<div class="billing-empty">Tudo em dia no licenciamento.</div>';return;}
+  $('delinquencyList').innerHTML=`<div class="table-scroll"><table><thead><tr><th>Academia</th><th>CNPJ</th><th>WhatsApp</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead><tbody>${delinquencies.map(({license,academy})=>`<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.legal_name||'Razão social não informada')}</span></td><td>${escapeHtml(academy.cnpj||'—')}</td><td>${escapeHtml(academy.phone||'—')}</td><td>${formatDateOnly(license.billing_due_date)}</td><td><strong>${formatMoneyCents(license.billing_amount_cents)}</strong></td><td><button class="button secondary compact" data-paid="${license.id}" type="button">Marcar paga</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function openLicense(id){selected=installations.find(item=>item.id===id);if(!selected)return;$('licenseAcademy').textContent=`${selected.academies?.name||'Academia'} · ${selected.installation_id}`;$('licenseDays').value=365;$('licenseAmount').value='0.00';$('licenseBillingDueDate').value=todayIso();$('licenseComplimentary').checked=true;toggleComplimentary();$('licenseNotes').value='';$('licensePerpetual').checked=false;$('licenseResult').classList.add('hidden');$('licenseToken').value='';$('modalError').textContent='';$('licenseModal').classList.remove('hidden');$('licenseDays').focus();}
 function closeLicense(){if(issuing)return;$('licenseModal').classList.add('hidden');}
+function toggleComplimentary(){const complimentary=$('licenseComplimentary').checked;$('licenseAmount').disabled=complimentary;$('licenseBillingDueDate').disabled=complimentary;if(complimentary)$('licenseAmount').value='0.00';}
 
 async function issue(){
   if(issuing||!selected)return;issuing=true;$('issueButton').disabled=true;$('issueButton').textContent='Gerando com segurança...';$('modalError').textContent='';
   try{
-    const data=await api('/functions/v1/license-issue',{method:'POST',body:{installationId:selected.id,days:Math.max(1,Math.min(3650,Number($('licenseDays').value||365))),perpetual:$('licensePerpetual').checked,notes:$('licenseNotes').value.slice(0,500)}});
+    const complimentary=$('licenseComplimentary').checked,amount=Number($('licenseAmount').value||0),dueDate=$('licenseBillingDueDate').value;
+    if(!complimentary&&amount<=0)throw new Error('Informe um valor maior que zero ou marque como cortesia.');
+    if(!complimentary&&!dueDate)throw new Error('Informe o vencimento da cobrança.');
+    const data=await api('/functions/v1/license-issue',{method:'POST',body:{installationId:selected.id,days:Math.max(1,Math.min(3650,Number($('licenseDays').value||365))),perpetual:$('licensePerpetual').checked,notes:$('licenseNotes').value.slice(0,500),complimentary,billingAmountCents:complimentary?0:Math.round(amount*100),billingDueDate:complimentary?null:dueDate}});
     $('licenseToken').value=data.token;$('licenseResult').classList.remove('hidden');showToast('Licença emitida com sucesso.');await loadInstallations();
   }catch(error){$('modalError').textContent=error.message;}
   finally{issuing=false;$('issueButton').disabled=false;$('issueButton').textContent='Gerar contrassenha';}
+}
+
+async function markPaid(licenseId){
+  if(!confirm('Confirmar o recebimento desta cobrança?'))return;
+  const item=delinquencies.find(entry=>entry.license.id===licenseId);
+  try{await api(`/rest/v1/licenses?id=eq.${encodeURIComponent(licenseId)}`,{method:'PATCH',body:{billing_status:'paid',paid_at:new Date().toISOString()}});await api('/rest/v1/license_events',{method:'POST',body:{installation_id:item?.installation.id||null,academy_id:item?.academy.id||null,event_type:'billing_paid',description:'Cobrança de licenciamento marcada como paga',details:{license_id:licenseId,amount_cents:item?.license.billing_amount_cents||0}}});showToast('Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message,true);}
+}
+
+function exportDelinquencies(){
+  if(!delinquencies.length){showToast('Não há inadimplências para exportar.',true);return;}
+  const quote=value=>{let text=String(value??'');if(/^[=+\-@]/.test(text))text=`'${text}`;return `"${text.replace(/"/g,'""')}"`;};
+  const rows=[['Nome','CNPJ','Razão Social','Número WhatsApp','E-mail','Data Vencimento','Valor'],...delinquencies.map(({license,academy})=>[academy.name||'',academy.cnpj||'',academy.legal_name||'',academy.phone||'',academy.email||'',formatDateOnly(license.billing_due_date),formatMoneyCents(license.billing_amount_cents)])];
+  const csv='\ufeff'+rows.map(row=>row.map(quote).join(';')).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`inadimplencias-licenciamento-${todayIso()}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);showToast('Lista de inadimplências exportada.');
 }
 
 async function copyToken(){
@@ -94,6 +124,6 @@ async function setStatus(id,status){
   }catch(error){showToast(error.message,true);}
 }
 
-$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));$('issueButton').addEventListener('click',issue);$('copyToken').addEventListener('click',copyToken);$('licensePerpetual').addEventListener('change',()=>{$('licenseDays').disabled=$('licensePerpetual').checked;});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('licenseModal').classList.contains('hidden'))closeLicense();});
+$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));$('issueButton').addEventListener('click',issue);$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licensePerpetual').addEventListener('change',()=>{$('licenseDays').disabled=$('licensePerpetual').checked;});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('licenseModal').classList.contains('hidden'))closeLicense();});
 
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();

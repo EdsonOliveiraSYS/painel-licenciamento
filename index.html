@@ -48,6 +48,13 @@
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
       </section>
+      <section class="billing-panel" aria-labelledby="billingTitle">
+        <div class="billing-head">
+          <div><p class="eyebrow">FINANCEIRO DO LICENCIAMENTO</p><h2 id="billingTitle">Inadimplências</h2><p id="billingSummary">Nenhuma cobrança vencida.</p></div>
+          <button id="exportDelinquency" class="button secondary" type="button">Exportar lista CSV</button>
+        </div>
+        <div id="delinquencyList" class="billing-list"></div>
+      </section>
       <section id="installationList" class="installation-list" aria-live="polite"></section>
     </main>
   </section>
@@ -57,6 +64,11 @@
       <div class="modal-head"><div><p class="eyebrow">ATIVAÇÃO</p><h2 id="licenseTitle">Emitir licença</h2></div><button class="icon-button" data-close type="button" aria-label="Fechar">×</button></div>
       <p id="licenseAcademy" class="modal-description"></p>
       <label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365">
+      <div class="billing-fields">
+        <div><label for="licenseAmount">Valor da licença (R$)</label><input id="licenseAmount" type="number" min="0" max="10000000" step="0.01" value="0.00"></div>
+        <div><label for="licenseBillingDueDate">Vencimento da cobrança</label><input id="licenseBillingDueDate" type="date"></div>
+      </div>
+      <label class="checkbox"><input id="licenseComplimentary" type="checkbox" checked> Licença cortesia, sem cobrança</label>
       <label for="licenseNotes">Observações internas</label><textarea id="licenseNotes" rows="3" maxlength="500"></textarea>
       <label class="checkbox"><input id="licensePerpetual" type="checkbox"> Licença sem vencimento</label>
       <div id="licenseResult" class="token-box hidden"><label for="licenseToken">Chave de ativação</label><textarea id="licenseToken" rows="7" readonly></textarea><button id="copyToken" class="button secondary full" type="button">Copiar chave</button></div>
