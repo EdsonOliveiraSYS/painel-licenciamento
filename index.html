@@ -63,14 +63,15 @@
     <div class="modal-card">
       <div class="modal-head"><div><p class="eyebrow">ATIVAÇÃO</p><h2 id="licenseTitle">Emitir licença</h2></div><button class="icon-button" data-close type="button" aria-label="Fechar">×</button></div>
       <p id="licenseAcademy" class="modal-description"></p>
-      <label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365">
+      <label for="licenseBillingCycle">Plano da licença</label>
+      <select id="licenseBillingCycle"><option value="monthly">Mensalidade</option><option value="annual">Anuidade</option><option value="custom">Prazo personalizado</option><option value="perpetual">Sem vencimento</option></select>
+      <div id="licenseCustomDays" class="hidden"><label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365"></div>
       <div class="billing-fields">
         <div><label for="licenseAmount">Valor da licença (R$)</label><input id="licenseAmount" type="number" min="0" max="10000000" step="0.01" value="0.00"></div>
         <div><label for="licenseBillingDueDate">Vencimento da cobrança</label><input id="licenseBillingDueDate" type="date"></div>
       </div>
       <label class="checkbox"><input id="licenseComplimentary" type="checkbox" checked> Licença cortesia, sem cobrança</label>
       <label for="licenseNotes">Observações internas</label><textarea id="licenseNotes" rows="3" maxlength="500"></textarea>
-      <label class="checkbox"><input id="licensePerpetual" type="checkbox"> Licença sem vencimento</label>
       <div id="licenseResult" class="token-box hidden"><label for="licenseToken">Chave de ativação</label><textarea id="licenseToken" rows="7" readonly></textarea><button id="copyToken" class="button secondary full" type="button">Copiar chave</button></div>
       <p id="modalError" class="error" role="alert" aria-live="polite"></p>
       <div class="modal-actions"><button data-close class="button secondary" type="button">Cancelar</button><button id="issueButton" class="button primary" type="button">Gerar contrassenha</button></div>

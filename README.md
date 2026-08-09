@@ -18,3 +18,5 @@ O site é publicado automaticamente pelo workflow de GitHub Pages.
 - Cobranças vencidas aparecem na área de inadimplências do painel.
 - A exportação CSV inclui nome, CNPJ, razão social, WhatsApp, e-mail, vencimento e valor.
 - O recebimento pode ser marcado no painel e fica registrado no histórico de eventos.
+- O plano comercial pode ser mensal, anual, personalizado ou sem vencimento.
+- Licenças mensais avisam o cliente automaticamente nos três dias anteriores ao vencimento.
