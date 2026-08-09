@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='ed-systems-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],messageTemplates=[],selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,delinquencies=[];
+let session=null,installations=[],financialCharges=[],messageTemplates=[],emailDeliveries=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,delinquencies=[];
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -46,7 +46,7 @@ async function login(event){
 }
 
 function openDashboard(){$('accountEmail').textContent=session.user?.email||'';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);installations=[];financialCharges=[];messageTemplates=[];$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function logout(){saveSession(null);installations=[];financialCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
 
 async function loadFinancialCharges(renderAfter=true){
   const bounds=monthBounds($('financeMonth').value);if(!bounds)return;
@@ -62,6 +62,14 @@ async function loadFinancialCharges(renderAfter=true){
 
 async function loadMessageTemplates(renderAfter=true){messageTemplates=await api('/rest/v1/license_message_templates?select=template_key,label,subject,body,enabled,updated_at&order=template_key')||[];if(renderAfter)renderMessageTemplates();}
 
+async function loadEmailIntegration(renderAfter=true){
+  const [status,deliveries]=await Promise.all([
+    api('/functions/v1/license-email-send',{method:'POST',body:{action:'status'}}),
+    api('/rest/v1/license_notifications?select=id,academy_id,recipient,template_key,status,provider_message_id,error_message,sent_at,created_at&order=created_at.desc&limit=8')
+  ]);
+  emailProviderConfigured=status?.configured===true;emailDeliveries=deliveries||[];if(renderAfter)renderEmailIntegration();
+}
+
 async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
@@ -70,6 +78,7 @@ async function loadInstallations(){
     installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];
     try{await loadFinancialCharges(false);}catch(error){financialCharges=[];$('financeCaption').textContent=`Não foi possível carregar o financeiro: ${error.message}`;}
     try{await loadMessageTemplates(false);}catch(error){messageTemplates=[];$('templateSummary').innerHTML=`<div class="finance-empty">${escapeHtml(error.message)}</div>`;}
+    try{await loadEmailIntegration(false);}catch(error){emailProviderConfigured=false;emailDeliveries=[];$('emailProviderStatus').innerHTML=`<span class="status-dot off"></span><div><strong>Integração de e-mail indisponível</strong><small>${escapeHtml(error.message)}</small></div>`;}
     render();
   }catch(error){$('installationList').innerHTML=`<div class="empty">${escapeHtml(error.message)}</div>`;if(/sessão|autorizada/i.test(error.message))logout();}
 }
@@ -81,6 +90,7 @@ function render(){
   $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
   renderFinancialSummary();
   renderMessageTemplates();
+  renderEmailIntegration();
   renderDelinquencies(overdueTotal);
   const query=$('search').value.trim().toLowerCase(),status=$('statusFilter').value;
   const filtered=installations.filter(item=>{const academy=item.academies||{};return(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
@@ -113,6 +123,12 @@ function renderMessageTemplates(){
   $('templateSummary').innerHTML=messageTemplates.map(template=>`<article class="template-card"><strong>${escapeHtml(template.label)}</strong><span>${escapeHtml(template.subject)}</span><small class="${template.enabled?'':'off'}">${template.enabled?'Ativo':'Inativo'}</small></article>`).join('');
 }
 
+function renderEmailIntegration(){
+  $('emailProviderStatus').innerHTML=emailProviderConfigured?'<span class="status-dot"></span><div><strong>E-mail configurado</strong><small>Envio manual disponível; as entregas são registradas abaixo.</small></div>':'<span class="status-dot off"></span><div><strong>Aguardando configuração do Resend</strong><small>Cadastre a chave e o remetente no Supabase para liberar os envios.</small></div>';
+  const templateLabels={due_soon:'Próxima do vencimento',overdue:'Vencida',blocked:'Bloqueio'},statusLabels={processing:'Processando',sent:'Enviado',failed:'Falhou'};
+  $('emailDeliveryHistory').innerHTML=emailDeliveries.length?emailDeliveries.map(item=>`<div class="delivery-row"><div><strong>${escapeHtml(installations.find(row=>row.academy_id===item.academy_id)?.academies?.name||item.recipient)}</strong><small>${escapeHtml(templateLabels[item.template_key]||item.template_key)}</small></div><div><span class="delivery-status ${escapeHtml(item.status)}">${statusLabels[item.status]||escapeHtml(item.status)}</span><small>${formatDate(item.sent_at||item.created_at)}</small></div></div>`).join(''):'<div class="finance-empty">Nenhum e-mail enviado ainda.</div>';
+}
+
 function fillTemplateForm(){const template=messageTemplates.find(item=>item.template_key===$('templateSelect').value);if(!template)return;$('templateEnabled').checked=template.enabled;$('templateSubject').value=template.subject;$('templateBody').value=template.body;$('templateError').textContent='';}
 function openTemplateModal(){if(!messageTemplates.length){showToast('Nenhum modelo disponível.',true);return;}$('templateSelect').innerHTML=messageTemplates.map(template=>`<option value="${escapeHtml(template.template_key)}">${escapeHtml(template.label)}</option>`).join('');fillTemplateForm();$('templateModal').classList.remove('hidden');$('templateSelect').focus();}
 function closeTemplateModal(){if(savingTemplate)return;$('templateModal').classList.add('hidden');}
@@ -127,7 +143,7 @@ function renderDelinquencies(total){
   $('billingSummary').textContent=delinquencies.length?`${delinquencies.length} cobrança(s) vencida(s), totalizando ${formatMoneyCents(total)}.`:'Nenhuma cobrança vencida.';
   $('exportDelinquency').disabled=!delinquencies.length;
   if(!delinquencies.length){$('delinquencyList').innerHTML='<div class="billing-empty">Tudo em dia no licenciamento.</div>';return;}
-  $('delinquencyList').innerHTML=`<div class="table-scroll"><table><thead><tr><th>Academia</th><th>CNPJ</th><th>WhatsApp</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead><tbody>${delinquencies.map(({license,academy})=>`<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.legal_name||'Razão social não informada')}</span></td><td>${escapeHtml(academy.cnpj||'—')}</td><td>${escapeHtml(academy.phone||'—')}</td><td>${formatDateOnly(license.billing_due_date)}</td><td><strong>${formatMoneyCents(license.billing_amount_cents)}</strong></td><td><button class="button secondary compact" data-paid="${license.id}" type="button">Marcar paga</button></td></tr>`).join('')}</tbody></table></div>`;
+  $('delinquencyList').innerHTML=`<div class="table-scroll"><table><thead><tr><th>Academia</th><th>CNPJ</th><th>WhatsApp</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead><tbody>${delinquencies.map(({license,academy})=>`<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.legal_name||'Razão social não informada')}</span></td><td>${escapeHtml(academy.cnpj||'—')}</td><td>${escapeHtml(academy.phone||'—')}</td><td>${formatDateOnly(license.billing_due_date)}</td><td><strong>${formatMoneyCents(license.billing_amount_cents)}</strong></td><td><div class="row-actions"><button class="button secondary compact" data-email="${license.id}" type="button" ${emailProviderConfigured&&academy.email?'':'disabled'}>Enviar e-mail</button><button class="button secondary compact" data-paid="${license.id}" type="button">Marcar paga</button></div></td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function openLicense(id){selected=installations.find(item=>item.id===id);if(!selected)return;$('licenseAcademy').textContent=`${selected.academies?.name||'Academia'} · ${selected.installation_id}`;$('licenseBillingCycle').value='monthly';$('licenseDays').value=30;$('licenseAmount').value='0.00';$('licenseBillingDueDate').value=addLocalMonthsIso(1);$('licenseComplimentary').checked=true;toggleBillingCycle();toggleComplimentary();$('licenseNotes').value='';$('licenseResult').classList.add('hidden');$('licenseToken').value='';$('modalError').textContent='';$('licenseModal').classList.remove('hidden');$('licenseBillingCycle').focus();}
@@ -137,7 +153,7 @@ function toggleBillingCycle(){const cycle=$('licenseBillingCycle').value;$('lice
 
 async function openBilling(id){
   const installation=installations.find(item=>item.id===id),license=(installation?.licenses||[]).find(item=>item.status==='active');if(!installation||!license){showToast('Esta instalação não possui licença ativa.',true);return;}
-  editingBilling={installation,license,charges:[]};$('billingAcademy').textContent=installation.academies?.name||'Academia';$('billingTechnicalValidity').textContent=`Validade técnica: ${formatDate(license.expires_at)}`;$('billingEditCycle').value=license.billing_cycle||'custom';$('billingEditAmount').value=(Number(license.billing_amount_cents||0)/100).toFixed(2);$('billingEditDueDate').value=license.billing_due_date||'';$('billingEditStatus').value=['pending','paid','waived','cancelled'].includes(license.billing_status)?license.billing_status:(Number(license.billing_amount_cents)>0?'pending':'waived');$('billingEditCollectionMode').value=license.billing_collection_mode||'manual';$('billingEditNoticeEnabled').checked=license.billing_notice_enabled!==false;$('billingEditNoticeDays').value=license.billing_notice_days??3;$('billingEditChannel').value=license.billing_notification_channel||'none';$('billingEditEnforcementMode').value=license.billing_enforcement_mode||'manual';$('billingEditGraceDays').value=license.billing_grace_days??3;toggleBillingAutomation();$('billingEditError').textContent='';$('billingHistoryList').innerHTML='<div class="billing-empty">Carregando histórico...</div>';$('billingModal').classList.remove('hidden');$('billingEditCycle').focus();
+  editingBilling={installation,license,charges:[]};$('billingAcademy').textContent=installation.academies?.name||'Academia';$('billingTechnicalValidity').textContent=`Validade técnica: ${formatDate(license.expires_at)}`;$('billingEditCycle').value=license.billing_cycle||'custom';$('billingEditAmount').value=(Number(license.billing_amount_cents||0)/100).toFixed(2);$('billingEditDueDate').value=license.billing_due_date||'';$('billingEditStatus').value=['pending','paid','waived','cancelled'].includes(license.billing_status)?license.billing_status:(Number(license.billing_amount_cents)>0?'pending':'waived');$('billingEditCollectionMode').value=license.billing_collection_mode||'manual';$('billingEditNoticeEnabled').checked=license.billing_notice_enabled!==false;$('billingEditNoticeDays').value=license.billing_notice_days??3;$('billingEditChannel').value=license.billing_notification_channel||'none';$('billingEditEnforcementMode').value=license.billing_enforcement_mode||'manual';$('billingEditGraceDays').value=license.billing_grace_days??3;$('billingEmailButton').disabled=!emailProviderConfigured||!installation.academies?.email||Number(license.billing_amount_cents)<=0||!license.billing_due_date;toggleBillingAutomation();$('billingEditError').textContent='';$('billingHistoryList').innerHTML='<div class="billing-empty">Carregando histórico...</div>';$('billingModal').classList.remove('hidden');$('billingEditCycle').focus();
   try{const charges=await api(`/rest/v1/license_charges?select=id,billing_cycle,amount_cents,due_date,status,paid_at,created_at&academy_id=eq.${encodeURIComponent(installation.academy_id)}&order=due_date.desc`);if(editingBilling?.license.id===license.id){editingBilling.charges=charges||[];renderBillingHistory(charges||[]);}}catch(error){if(editingBilling?.license.id===license.id)$('billingHistoryList').innerHTML=`<div class="billing-empty">${escapeHtml(error.message)}</div>`;}
 }
 function closeBilling(){if(savingBilling)return;editingBilling=null;$('billingModal').classList.add('hidden');}
@@ -169,6 +185,21 @@ async function markPaid(licenseId){
   try{if(!item)throw new Error('Cobrança não encontrada.');const result=await api('/functions/v1/license-billing-update',{method:'POST',body:billingPayload(item.license,{billingStatus:'paid'})});showToast(result.renewed?'Cobrança paga e próximo vencimento gerado.':'Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message,true);}
 }
 
+async function sendBillingEmail(licenseId){
+  if(sendingEmail)return;
+  const entry=installations.flatMap(installation=>(installation.licenses||[]).map(license=>({license,installation,academy:installation.academies||{}}))).find(item=>item.license.id===licenseId);
+  if(!entry){showToast('Licença não encontrada.',true);return;}
+  if(!entry.academy.email){showToast('Cadastre o e-mail da academia antes do envio.',true);return;}
+  if(!confirm(`Enviar a mensagem de cobrança para ${entry.academy.email}?`))return;
+  sendingEmail=true;$('billingEmailButton').disabled=true;
+  try{
+    const templateKey=entry.license.billing_auto_blocked_at?'blocked':entry.license.billing_due_date<todayIso()?'overdue':'due_soon';
+    const result=await api('/functions/v1/license-email-send',{method:'POST',body:{licenseId,templateKey,requestId:crypto.randomUUID()}});
+    showToast(`E-mail enviado para ${result.recipient}.`);await loadEmailIntegration();
+  }catch(error){const messages={email_provider_not_configured:'Configure o Resend e o remetente no Supabase.',academy_email_required:'Cadastre um e-mail válido para a academia.',billing_not_applicable:'Esta licença não possui cobrança vigente.',template_disabled:'O modelo desta mensagem está desativado.',email_delivery_failed:'O provedor recusou o envio. Consulte o histórico.'};showToast(messages[error.message]||error.message,true);}
+  finally{sendingEmail=false;if(editingBilling)$('billingEmailButton').disabled=!emailProviderConfigured||!editingBilling.installation.academies?.email;}
+}
+
 function exportDelinquencies(){
   if(!delinquencies.length){showToast('Não há inadimplências para exportar.',true);return;}
   const quote=value=>{let text=String(value??'');if(/^[=+\-@]/.test(text))text=`'${text}`;return `"${text.replace(/"/g,'""')}"`;};
@@ -194,7 +225,7 @@ async function setStatus(id,status){
   }catch(error){showToast(error.message,true);}
 }
 
-$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('editTemplatesButton').addEventListener('click',openTemplateModal);$('templateSelect').addEventListener('change',fillTemplateForm);$('templateSaveButton').addEventListener('click',saveMessageTemplate);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));document.querySelectorAll('[data-close-template]').forEach(button=>button.addEventListener('click',closeTemplateModal));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();if(!$('templateModal').classList.contains('hidden'))closeTemplateModal();}});
+$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('editTemplatesButton').addEventListener('click',openTemplateModal);$('templateSelect').addEventListener('change',fillTemplateForm);$('templateSaveButton').addEventListener('click',saveMessageTemplate);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.email)sendBillingEmail(event.target.dataset.email);if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));document.querySelectorAll('[data-close-template]').forEach(button=>button.addEventListener('click',closeTemplateModal));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('billingEmailButton').addEventListener('click',()=>editingBilling&&sendBillingEmail(editingBilling.license.id));$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();if(!$('templateModal').classList.contains('hidden'))closeTemplateModal();}});
 $('billingEditNoticeEnabled').addEventListener('change',toggleBillingAutomation);
 $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomation);
 

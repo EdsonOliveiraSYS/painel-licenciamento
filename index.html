@@ -52,7 +52,10 @@
       </section>
       <section class="template-panel" aria-labelledby="templatePanelTitle">
         <div class="template-panel-head"><div><p class="eyebrow">COMUNICAÇÃO</p><h2 id="templatePanelTitle">Modelos de mensagens</h2><p>Textos utilizados nos avisos internos e preparados para WhatsApp/e-mail.</p></div><button id="editTemplatesButton" class="button secondary" type="button">Editar modelos</button></div>
+        <div id="emailProviderStatus" class="email-provider-status" aria-live="polite"></div>
         <div id="templateSummary" class="template-summary"></div>
+        <div class="delivery-head"><strong>Últimos e-mails</strong><span>Registro das tentativas realizadas pela Central</span></div>
+        <div id="emailDeliveryHistory" class="email-delivery-history"></div>
       </section>
       <section class="toolbar" aria-label="Filtros">
         <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
@@ -119,7 +122,7 @@
         <div id="billingHistoryList" class="billing-history-list"><div class="billing-empty">Carregando histórico...</div></div>
       </section>
       <p id="billingEditError" class="error" role="alert" aria-live="polite"></p>
-      <div class="modal-actions"><button data-close-billing class="button secondary" type="button">Cancelar</button><button id="billingSaveButton" class="button primary" type="button">Salvar plano e cobrança</button></div>
+      <div class="modal-actions billing-modal-actions"><button data-close-billing class="button secondary" type="button">Cancelar</button><button id="billingEmailButton" class="button secondary" type="button">Enviar e-mail</button><button id="billingSaveButton" class="button primary" type="button">Salvar plano e cobrança</button></div>
     </div>
   </div>
   <div id="templateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle">
