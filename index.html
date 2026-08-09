@@ -88,6 +88,20 @@
         <div><label for="billingEditDueDate">Vencimento da cobrança</label><input id="billingEditDueDate" type="date"></div>
       </div>
       <label for="billingEditStatus">Situação da cobrança</label><select id="billingEditStatus"><option value="pending">Pendente</option><option value="paid">Paga</option><option value="waived">Isenta</option><option value="cancelled">Cancelada</option></select>
+      <section class="automation-panel" aria-labelledby="billingAutomationTitle">
+        <h3 id="billingAutomationTitle">Automação e avisos</h3>
+        <div class="billing-fields">
+          <div><label for="billingEditCollectionMode">Forma de cobrança</label><select id="billingEditCollectionMode"><option value="manual">Manual</option><option value="automatic">Automática</option></select></div>
+          <div><label for="billingEditChannel">Canal externo</label><select id="billingEditChannel"><option value="none">Nenhum</option><option value="whatsapp">WhatsApp</option><option value="email">E-mail</option><option value="both">WhatsApp e e-mail</option></select></div>
+        </div>
+        <label class="checkbox"><input id="billingEditNoticeEnabled" type="checkbox" checked> Mostrar aviso dentro do sistema do cliente</label>
+        <div class="billing-fields">
+          <div><label for="billingEditNoticeDays">Avisar com antecedência (dias)</label><input id="billingEditNoticeDays" type="number" min="0" max="30" step="1" value="3"></div>
+          <div><label for="billingEditEnforcementMode">Ação após vencimento</label><select id="billingEditEnforcementMode"><option value="alerts_only">Somente avisar</option><option value="manual">Bloqueio manual</option><option value="automatic">Bloqueio automático</option></select></div>
+        </div>
+        <label for="billingEditGraceDays">Período de tolerância antes do bloqueio (dias)</label><input id="billingEditGraceDays" type="number" min="0" max="30" step="1" value="3">
+        <p class="provider-note">O aviso interno e o bloqueio automático funcionam agora. O envio real por WhatsApp/e-mail será ativado quando o fornecedor for configurado.</p>
+      </section>
       <p id="billingEditError" class="error" role="alert" aria-live="polite"></p>
       <div class="modal-actions"><button data-close-billing class="button secondary" type="button">Cancelar</button><button id="billingSaveButton" class="button primary" type="button">Salvar plano e cobrança</button></div>
     </div>
