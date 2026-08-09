@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#182033">
+  <meta name="description" content="Central privada de licenciamento ED SYSTEMS">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+  <title>Central de Licenças · ED SYSTEMS</title>
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section id="loginView" class="login-view">
+    <main class="login-card">
+      <div class="brand-mark" aria-hidden="true">ED</div>
+      <p class="eyebrow">ED SYSTEMS</p>
+      <h1>Central de Licenças</h1>
+      <p class="lead">Acesso administrativo protegido para gerenciar academias e ativações.</p>
+      <form id="loginForm">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" inputmode="email" required>
+        <label for="password">Senha</label>
+        <input id="password" type="password" autocomplete="current-password" required minlength="8">
+        <p id="loginError" class="error" role="alert" aria-live="polite"></p>
+        <button id="loginButton" class="button primary full" type="submit">Entrar com segurança</button>
+      </form>
+      <p class="security-note">Sua senha é enviada diretamente ao Supabase e não fica salva neste site.</p>
+    </main>
+  </section>
+
+  <section id="appView" class="app-view hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-mark small">ED</div><div><strong>ED SYSTEMS</strong><span>Licenciamento</span></div></div>
+      <button class="nav-item active" type="button">▦ <span>Visão geral</span></button>
+      <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <div><p class="eyebrow">CONTROLE COMERCIAL</p><h1>Academias e instalações</h1><p>Ative, renove ou bloqueie uma licença de qualquer dispositivo.</p></div>
+        <button id="refreshButton" class="button secondary" type="button">↻ Atualizar</button>
+      </header>
+      <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
+      <section id="metrics" class="metrics" aria-label="Resumo das licenças"></section>
+      <section class="toolbar" aria-label="Filtros">
+        <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
+        <select id="statusFilter">
+          <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
+        </select>
+      </section>
+      <section id="installationList" class="installation-list" aria-live="polite"></section>
+    </main>
+  </section>
+
+  <div id="licenseModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="licenseTitle">
+    <div class="modal-card">
+      <div class="modal-head"><div><p class="eyebrow">ATIVAÇÃO</p><h2 id="licenseTitle">Emitir licença</h2></div><button class="icon-button" data-close type="button" aria-label="Fechar">×</button></div>
+      <p id="licenseAcademy" class="modal-description"></p>
+      <label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365">
+      <label for="licenseNotes">Observações internas</label><textarea id="licenseNotes" rows="3" maxlength="500"></textarea>
+      <label class="checkbox"><input id="licensePerpetual" type="checkbox"> Licença sem vencimento</label>
+      <div id="licenseResult" class="token-box hidden"><label for="licenseToken">Chave de ativação</label><textarea id="licenseToken" rows="7" readonly></textarea><button id="copyToken" class="button secondary full" type="button">Copiar chave</button></div>
+      <p id="modalError" class="error" role="alert" aria-live="polite"></p>
+      <div class="modal-actions"><button data-close class="button secondary" type="button">Cancelar</button><button id="issueButton" class="button primary" type="button">Gerar contrassenha</button></div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
