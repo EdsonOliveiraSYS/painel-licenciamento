@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='ed-systems-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],messageTemplates=[],emailDeliveries=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,delinquencies=[];
+let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,delinquencies=[];
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -46,7 +46,12 @@ async function login(event){
 }
 
 function openDashboard(){$('accountEmail').textContent=session.user?.email||'';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);installations=[];financialCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function logout(){saveSession(null);installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+
+async function loadDelinquentCharges(){
+  const fields='id,license_id,installation_id,academy_id,billing_cycle,amount_cents,due_date,status,paid_at';
+  delinquentCharges=await api(`/rest/v1/license_charges?select=${fields}&status=in.(pending,overdue)&due_date=lt.${todayIso()}&order=due_date.asc`)||[];
+}
 
 async function loadFinancialCharges(renderAfter=true){
   const bounds=monthBounds($('financeMonth').value);if(!bounds)return;
@@ -76,7 +81,7 @@ async function loadInstallations(){
     await ensureAdmin();
     const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
     installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];
-    try{await loadFinancialCharges(false);}catch(error){financialCharges=[];$('financeCaption').textContent=`Não foi possível carregar o financeiro: ${error.message}`;}
+    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges()]);}catch(error){financialCharges=[];delinquentCharges=[];$('financeCaption').textContent=`Não foi possível carregar o financeiro: ${error.message}`;}
     try{await loadMessageTemplates(false);}catch(error){messageTemplates=[];$('templateSummary').innerHTML=`<div class="finance-empty">${escapeHtml(error.message)}</div>`;}
     try{await loadEmailIntegration(false);}catch(error){emailProviderConfigured=false;emailDeliveries=[];$('emailProviderStatus').innerHTML=`<span class="status-dot off"></span><div><strong>Integração de e-mail indisponível</strong><small>${escapeHtml(error.message)}</small></div>`;}
     render();
@@ -85,8 +90,8 @@ async function loadInstallations(){
 
 function render(){
   const count=status=>installations.filter(item=>item.status===status).length;
-  delinquencies=installations.flatMap(item=>(item.licenses||[]).map(license=>({license,installation:item,academy:item.academies||{}}))).filter(item=>Number(item.license.billing_amount_cents)>0&&['pending','overdue'].includes(item.license.billing_status)&&item.license.billing_due_date&&item.license.billing_due_date<todayIso());
-  const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.license.billing_amount_cents||0),0);
+  delinquencies=delinquentCharges.map(charge=>{const installation=installations.find(item=>item.id===charge.installation_id),license=(installation?.licenses||[]).find(item=>item.id===charge.license_id);return {charge,license,installation,academy:installation?.academies||{}};}).filter(item=>item.installation);
+  const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.charge.amount_cents||0),0);
   $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
   renderFinancialSummary();
   renderMessageTemplates();
@@ -143,7 +148,7 @@ function renderDelinquencies(total){
   $('billingSummary').textContent=delinquencies.length?`${delinquencies.length} cobrança(s) vencida(s), totalizando ${formatMoneyCents(total)}.`:'Nenhuma cobrança vencida.';
   $('exportDelinquency').disabled=!delinquencies.length;
   if(!delinquencies.length){$('delinquencyList').innerHTML='<div class="billing-empty">Tudo em dia no licenciamento.</div>';return;}
-  $('delinquencyList').innerHTML=`<div class="table-scroll"><table><thead><tr><th>Academia</th><th>CNPJ</th><th>WhatsApp</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead><tbody>${delinquencies.map(({license,academy})=>`<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.legal_name||'Razão social não informada')}</span></td><td>${escapeHtml(academy.cnpj||'—')}</td><td>${escapeHtml(academy.phone||'—')}</td><td>${formatDateOnly(license.billing_due_date)}</td><td><strong>${formatMoneyCents(license.billing_amount_cents)}</strong></td><td><div class="row-actions"><button class="button secondary compact" data-email="${license.id}" type="button" ${emailProviderConfigured&&academy.email?'':'disabled'}>Enviar e-mail</button><button class="button secondary compact" data-paid="${license.id}" type="button">Marcar paga</button></div></td></tr>`).join('')}</tbody></table></div>`;
+  $('delinquencyList').innerHTML=`<div class="table-scroll"><table><thead><tr><th>Academia</th><th>CNPJ</th><th>WhatsApp</th><th>Vencimento</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${delinquencies.map(({charge,license,academy})=>`<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.legal_name||'Razão social não informada')}</span></td><td>${escapeHtml(academy.cnpj||'—')}</td><td>${escapeHtml(academy.phone||'—')}</td><td>${formatDateOnly(charge.due_date)}</td><td><strong>${formatMoneyCents(charge.amount_cents)}</strong></td><td><div class="row-actions"><button class="button secondary compact" data-email="${license?.id||charge.license_id}" type="button" ${emailProviderConfigured&&academy.email?'':'disabled'}>Enviar e-mail</button><button class="button secondary compact" data-paid="${charge.id}" type="button">Marcar como paga</button></div></td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function openLicense(id){selected=installations.find(item=>item.id===id);if(!selected)return;$('licenseAcademy').textContent=`${selected.academies?.name||'Academia'} · ${selected.installation_id}`;$('licenseBillingCycle').value='monthly';$('licenseDays').value=30;$('licenseAmount').value='0.00';$('licenseBillingDueDate').value=addLocalMonthsIso(1);$('licenseComplimentary').checked=true;toggleBillingCycle();toggleComplimentary();$('licenseNotes').value='';$('licenseResult').classList.add('hidden');$('licenseToken').value='';$('modalError').textContent='';$('licenseModal').classList.remove('hidden');$('licenseBillingCycle').focus();}
@@ -179,10 +184,10 @@ async function issue(){
   finally{issuing=false;$('issueButton').disabled=false;$('issueButton').textContent='Gerar contrassenha';}
 }
 
-async function markPaid(licenseId){
+async function markPaid(chargeId){
   if(!confirm('Confirmar o recebimento desta cobrança?'))return;
-  const item=delinquencies.find(entry=>entry.license.id===licenseId);
-  try{if(!item)throw new Error('Cobrança não encontrada.');const result=await api('/functions/v1/license-billing-update',{method:'POST',body:billingPayload(item.license,{billingStatus:'paid'})});showToast(result.renewed?'Cobrança paga e próximo vencimento gerado.':'Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message,true);}
+  const item=delinquencies.find(entry=>entry.charge.id===chargeId);
+  try{if(!item)throw new Error('Cobrança não encontrada.');const result=await api('/functions/v1/license-billing-update',{method:'POST',body:{action:'mark_charge_paid',chargeId}});showToast(result.renewed?'Cobrança paga e próximo vencimento gerado.':result.historical?'Cobrança histórica marcada como paga.':'Cobrança marcada como paga.');await loadInstallations();}catch(error){showToast(error.message==='charge_not_payable'?'Esta cobrança não está mais aberta para pagamento.':error.message,true);}
 }
 
 async function sendBillingEmail(licenseId){
@@ -203,7 +208,7 @@ async function sendBillingEmail(licenseId){
 function exportDelinquencies(){
   if(!delinquencies.length){showToast('Não há inadimplências para exportar.',true);return;}
   const quote=value=>{let text=String(value??'');if(/^[=+\-@]/.test(text))text=`'${text}`;return `"${text.replace(/"/g,'""')}"`;};
-  const rows=[['Nome','CNPJ','Razão Social','Número WhatsApp','E-mail','Data Vencimento','Valor'],...delinquencies.map(({license,academy})=>[academy.name||'',academy.cnpj||'',academy.legal_name||'',academy.phone||'',academy.email||'',formatDateOnly(license.billing_due_date),formatMoneyCents(license.billing_amount_cents)])];
+  const rows=[['Nome','CNPJ','Razão Social','Número WhatsApp','E-mail','Data Vencimento','Valor'],...delinquencies.map(({charge,academy})=>[academy.name||'',academy.cnpj||'',academy.legal_name||'',academy.phone||'',academy.email||'',formatDateOnly(charge.due_date),formatMoneyCents(charge.amount_cents)])];
   const csv='\ufeff'+rows.map(row=>row.map(quote).join(';')).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`inadimplencias-licenciamento-${todayIso()}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);showToast('Lista de inadimplências exportada.');
 }
 
