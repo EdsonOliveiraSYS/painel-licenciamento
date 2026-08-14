@@ -102,9 +102,29 @@ async function sha256File(file){const bytes=await file.arrayBuffer(),digest=awai
 
 async function uploadUpdateInstaller(pathname,file){
   if(session?.expires_at&&Date.now()/1000>Number(session.expires_at)-60)await refreshSession();
-  const objectPath=pathname.split('/').map(encodeURIComponent).join('/');
-  const response=await fetch(`${SUPABASE_URL}/storage/v1/object/app-updates/${objectPath}`,{method:'POST',headers:{apikey:PUBLISHABLE_KEY,authorization:`Bearer ${session.access_token}`,'content-type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
-  const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null;}catch(_){data=raw;}if(!response.ok)throw new Error(data?.message||data?.error||`Falha no envio do instalador (${response.status}).`);return data;
+  if(!globalThis.tus?.Upload)throw new Error('O componente de envio retomável não foi carregado. Atualize a página e tente novamente.');
+  return new Promise((resolve,reject)=>{
+    const upload=new globalThis.tus.Upload(file,{
+      endpoint:'https://czdvttwkhpfeyekqcbcy.storage.supabase.co/storage/v1/upload/resumable',
+      retryDelays:[0,3000,5000,10000,20000],
+      headers:{authorization:`Bearer ${session.access_token}`,apikey:PUBLISHABLE_KEY,'x-upsert':'false'},
+      uploadDataDuringCreation:true,
+      removeFingerprintOnSuccess:true,
+      chunkSize:6*1024*1024,
+      metadata:{bucketName:'app-updates',objectName:pathname,contentType:file.type||'application/octet-stream',cacheControl:'3600'},
+      onError:error=>reject(new Error(error?.originalResponse?.getBody?.()||error?.message||'Falha no envio retomável do instalador.')),
+      onProgress:(uploaded,total)=>{
+        const percentage=total?Math.min(100,Math.round(uploaded/total*100)):0;
+        $('updatePublishStatus').textContent=`Enviando o instalador privado... ${percentage}%`;
+        $('publishUpdateButton').textContent=`Enviando ${percentage}%`;
+      },
+      onSuccess:()=>resolve({path:pathname,url:upload.url})
+    });
+    upload.findPreviousUploads().then(previous=>{
+      if(previous.length)upload.resumeFromPreviousUpload(previous[0]);
+      upload.start();
+    }).catch(reject);
+  });
 }
 
 function toggleUpdatePublisher(show){$('updatePublisher').classList.toggle('hidden',!show);if(show)$('updateVersion').focus();}
