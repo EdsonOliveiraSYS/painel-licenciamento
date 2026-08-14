@@ -42,6 +42,27 @@
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" aria-label="Resumo das licenças"></section>
+      <section class="update-panel" aria-labelledby="updatePanelTitle">
+        <div class="update-panel-head">
+          <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
+          <button id="toggleUpdatePublisher" class="button secondary" type="button">Publicar nova versão</button>
+        </div>
+        <div id="updateOverview" class="update-overview" aria-live="polite"></div>
+        <form id="updatePublisher" class="update-publisher hidden">
+          <div class="update-fields">
+            <div><label for="updateVersion">Versão</label><input id="updateVersion" required placeholder="Ex.: 1.1.0" pattern="[vV]?[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?"></div>
+            <div><label for="updateChannel">Canal</label><select id="updateChannel"><option value="stable">Estável</option><option value="beta">Testes (beta)</option></select></div>
+            <div><label for="updateMinVersion">Versão mínima (opcional)</label><input id="updateMinVersion" placeholder="Ex.: 1.0.0"></div>
+          </div>
+          <label for="updateNotes">O que mudou</label><textarea id="updateNotes" rows="3" maxlength="4000" placeholder="Melhorias e correções desta versão"></textarea>
+          <label for="updateInstaller">Instalador Windows (.exe)</label><input id="updateInstaller" type="file" accept=".exe,application/x-msdownload,application/vnd.microsoft.portable-executable" required>
+          <label class="checkbox"><input id="updateMandatory" type="checkbox"> Atualização obrigatória</label>
+          <p id="updatePublishStatus" class="provider-note" aria-live="polite">O arquivo ficará privado e será conferido por SHA-256 antes da instalação.</p>
+          <p id="updatePublishError" class="error" role="alert"></p>
+          <div class="modal-actions"><button id="cancelUpdatePublisher" class="button secondary" type="button">Cancelar</button><button id="publishUpdateButton" class="button primary" type="submit">Enviar e publicar</button></div>
+        </form>
+        <div id="outdatedClients" class="outdated-clients"></div>
+      </section>
       <section class="finance-overview" aria-labelledby="financeOverviewTitle">
         <div class="finance-overview-head">
           <div><p class="eyebrow">RESULTADO FINANCEIRO</p><h2 id="financeOverviewTitle">Receitas do licenciamento</h2><p id="financeCaption">Resumo das cobranças do período selecionado.</p></div>

@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='ed-systems-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,delinquencies=[];
+let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[];
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -75,13 +75,72 @@ async function loadEmailIntegration(renderAfter=true){
   emailProviderConfigured=status?.configured===true;emailDeliveries=deliveries||[];if(renderAfter)renderEmailIntegration();
 }
 
+const versionParts=value=>String(value||'0').replace(/^v/i,'').split('.').slice(0,4).map(part=>Number((part.match(/^\d+/)||['0'])[0]));
+const compareVersions=(left,right)=>{const a=versionParts(left),b=versionParts(right);for(let index=0;index<Math.max(a.length,b.length,3);index++){const difference=(a[index]||0)-(b[index]||0);if(difference)return difference;}return 0;};
+const latestRelease=channel=>appReleases.filter(item=>item.status==='published'&&item.channel===channel).sort((a,b)=>compareVersions(b.version,a.version))[0]||null;
+
+async function loadAppReleases(){
+  appReleases=await api('/rest/v1/app_releases?select=id,version,channel,status,release_notes,mandatory,min_version,installer_path,installer_sha256,installer_size_bytes,published_at,created_at&order=created_at.desc')||[];
+}
+
+function updateStatusLabel(item){
+  if(item.update_error)return 'Falha';
+  return {unknown:'Aguardando contato',up_to_date:'Atualizado',available:'Disponível',downloading:'Baixando',downloaded:'Pronto para instalar',installing:'Instalando',failed:'Falha'}[item.update_status]||'Aguardando';
+}
+
+function renderUpdateCenter(){
+  const stable=latestRelease('stable'),beta=latestRelease('beta');
+  const targetFor=item=>latestRelease(item.update_channel==='beta'?'beta':'stable');
+  const outdated=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;});
+  const updated=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)>=0;}).length;
+  $('updateOverview').innerHTML=`<article><span>Versão estável</span><strong>${escapeHtml(stable?.version||'Não publicada')}</strong><small>${stable?formatDate(stable.published_at):'Envie o primeiro instalador'}</small></article><article><span>Clientes atualizados</span><strong>${updated}</strong><small>Na versão do canal escolhido</small></article><article class="${outdated.length?'attention':''}"><span>Precisam atualizar</span><strong>${outdated.length}</strong><small>${outdated.length?'Veja a lista abaixo':'Todos em dia'}</small></article><article><span>Canal beta</span><strong>${escapeHtml(beta?.version||'—')}</strong><small>${beta?'Disponível para testes':'Sem versão beta'}</small></article>`;
+  if(!outdated.length){$('outdatedClients').innerHTML='<div class="update-empty">Nenhum cliente precisa atualizar neste momento.</div>';return;}
+  $('outdatedClients').innerHTML=`<div class="update-list-head"><strong>Clientes que precisam atualizar</strong><span>${outdated.length} instalação(ões)</span></div><div class="table-scroll"><table><thead><tr><th>Academia</th><th>Instalada</th><th>Disponível</th><th>Andamento</th><th>Último contato</th><th>Automático</th></tr></thead><tbody>${outdated.map(item=>{const academy=item.academies||{},target=targetFor(item);return `<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.cnpj||'CNPJ não informado')}</span></td><td>${escapeHtml(item.app_version||'Não informada')}</td><td><strong>${escapeHtml(target?.version||'—')}</strong>${target?.mandatory?'<span class="update-required">Obrigatória</span>':''}</td><td><span class="update-progress ${escapeHtml(item.update_status||'unknown')}">${escapeHtml(updateStatusLabel(item))}</span>${item.update_error?`<small>${escapeHtml(item.update_error)}</small>`:''}</td><td>${formatDate(item.last_seen_at)}</td><td><button class="button secondary compact" data-update-auto="${item.id}" data-enabled="${item.update_auto_enabled!==false?'true':'false'}" type="button">${item.update_auto_enabled!==false?'Ligado':'Desligado'}</button></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
+async function sha256File(file){const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');}
+
+async function uploadUpdateInstaller(pathname,file){
+  if(session?.expires_at&&Date.now()/1000>Number(session.expires_at)-60)await refreshSession();
+  const objectPath=pathname.split('/').map(encodeURIComponent).join('/');
+  const response=await fetch(`${SUPABASE_URL}/storage/v1/object/app-updates/${objectPath}`,{method:'POST',headers:{apikey:PUBLISHABLE_KEY,authorization:`Bearer ${session.access_token}`,'content-type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
+  const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null;}catch(_){data=raw;}if(!response.ok)throw new Error(data?.message||data?.error||`Falha no envio do instalador (${response.status}).`);return data;
+}
+
+function toggleUpdatePublisher(show){$('updatePublisher').classList.toggle('hidden',!show);if(show)$('updateVersion').focus();}
+
+async function publishUpdate(event){
+  event.preventDefault();if(publishingUpdate)return;
+  const version=$('updateVersion').value.trim().replace(/^v/i,''),channel=$('updateChannel').value,minVersion=$('updateMinVersion').value.trim().replace(/^v/i,''),file=$('updateInstaller').files[0];
+  $('updatePublishError').textContent='';
+  if(!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(version)){ $('updatePublishError').textContent='Informe a versão no formato 1.2.3.';return; }
+  if(minVersion&&!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(minVersion)){ $('updatePublishError').textContent='A versão mínima deve usar o formato 1.2.3.';return; }
+  if(!file||!file.name.toLowerCase().endsWith('.exe')){ $('updatePublishError').textContent='Selecione o instalador .exe desta versão.';return; }
+  if(appReleases.some(item=>item.version===version&&item.channel===channel)){ $('updatePublishError').textContent='Esta versão já existe nesse canal.';return; }
+  publishingUpdate=true;$('publishUpdateButton').disabled=true;$('publishUpdateButton').textContent='Preparando...';
+  try{
+    $('updatePublishStatus').textContent='Calculando a integridade SHA-256 do instalador...';
+    const sha256=await sha256File(file),installerPath=`${channel}/${version}/Academia-Setup-${version}.exe`;
+    $('updatePublishStatus').textContent='Enviando o instalador para o armazenamento privado...';
+    await uploadUpdateInstaller(installerPath,file);
+    $('updatePublishStatus').textContent='Publicando a versão para os clientes...';
+    await api('/rest/v1/app_releases',{method:'POST',body:{version,channel,status:'published',release_notes:$('updateNotes').value.trim(),mandatory:$('updateMandatory').checked,min_version:minVersion||null,installer_path:installerPath,installer_sha256:sha256,installer_size_bytes:file.size,published_at:new Date().toISOString(),created_by:session.user.id}});
+    event.target.reset();$('updateChannel').value='stable';toggleUpdatePublisher(false);showToast(`Versão ${version} publicada com segurança.`);await loadInstallations();
+  }catch(error){$('updatePublishError').textContent=error.message;$('updatePublishStatus').textContent='A publicação não foi concluída.';}
+  finally{publishingUpdate=false;$('publishUpdateButton').disabled=false;$('publishUpdateButton').textContent='Enviar e publicar';}
+}
+
+async function toggleClientAutomaticUpdate(id,enabled){
+  try{await api(`/rest/v1/installations?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{update_auto_enabled:!enabled}});showToast(`Atualização automática ${!enabled?'ativada':'desativada'} para este cliente.`);await loadInstallations();}catch(error){showToast(error.message,true);}
+}
+
 async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
     await ensureAdmin();
-    const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
+    const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,update_channel,update_auto_enabled,update_status,update_target_version,update_checked_at,update_downloaded_at,update_error,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
     installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];
-    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges()]);}catch(error){financialCharges=[];delinquentCharges=[];$('financeCaption').textContent=`Não foi possível carregar o financeiro: ${error.message}`;}
+    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases()]);}catch(error){financialCharges=[];delinquentCharges=[];appReleases=[];$('financeCaption').textContent=`Não foi possível carregar parte da Central: ${error.message}`;}
     try{await loadMessageTemplates(false);}catch(error){messageTemplates=[];$('templateSummary').innerHTML=`<div class="finance-empty">${escapeHtml(error.message)}</div>`;}
     try{await loadEmailIntegration(false);}catch(error){emailProviderConfigured=false;emailDeliveries=[];$('emailProviderStatus').innerHTML=`<span class="status-dot off"></span><div><strong>Integração de e-mail indisponível</strong><small>${escapeHtml(error.message)}</small></div>`;}
     render();
@@ -93,6 +152,7 @@ function render(){
   delinquencies=delinquentCharges.map(charge=>{const installation=installations.find(item=>item.id===charge.installation_id),license=(installation?.licenses||[]).find(item=>item.id===charge.license_id);return {charge,license,installation,academy:installation?.academies||{}};}).filter(item=>item.installation);
   const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.charge.amount_cents||0),0);
   $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  renderUpdateCenter();
   renderFinancialSummary();
   renderMessageTemplates();
   renderEmailIntegration();
@@ -233,6 +293,10 @@ async function setStatus(id,status){
 $('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('editTemplatesButton').addEventListener('click',openTemplateModal);$('templateSelect').addEventListener('change',fillTemplateForm);$('templateSaveButton').addEventListener('click',saveMessageTemplate);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.email)sendBillingEmail(event.target.dataset.email);if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));document.querySelectorAll('[data-close-template]').forEach(button=>button.addEventListener('click',closeTemplateModal));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('billingEmailButton').addEventListener('click',()=>editingBilling&&sendBillingEmail(editingBilling.license.id));$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();if(!$('templateModal').classList.contains('hidden'))closeTemplateModal();}});
 $('billingEditNoticeEnabled').addEventListener('change',toggleBillingAutomation);
 $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomation);
+$('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(true));
+$('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
+$('updatePublisher').addEventListener('submit',publishUpdate);
+$('outdatedClients').addEventListener('click',event=>{const button=event.target.closest('[data-update-auto]');if(button)toggleClientAutomaticUpdate(button.dataset.updateAuto,button.dataset.enabled==='true');});
 
 $('financeMonth').value=currentMonthIso();
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
