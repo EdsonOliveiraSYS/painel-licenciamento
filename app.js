@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://czdvttwkhpfeyekqcbcy.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
-const SESSION_KEY='ed-systems-license-session';
+const SESSION_KEY='fitnexus-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
 let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[];
@@ -33,7 +33,7 @@ async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
 async function ensureAdmin(){
   if(!session?.user?.id)throw new Error('Sessão administrativa ausente.');
   const rows=await api(`/rest/v1/license_admins?select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}`);
-  if(!rows?.length)throw new Error('Esta conta não está autorizada na Central ED SYSTEMS.');
+  if(!rows?.length)throw new Error('Esta conta não está autorizada na Central FitNexus.');
 }
 
 async function login(event){
@@ -317,6 +317,13 @@ $('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(tr
 $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
 $('updatePublisher').addEventListener('submit',publishUpdate);
 $('outdatedClients').addEventListener('click',event=>{const button=event.target.closest('[data-update-auto]');if(button)toggleClientAutomaticUpdate(button.dataset.updateAuto,button.dataset.enabled==='true');});
+
+document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>{
+  const target=$(button.dataset.scrollTarget);if(!target)return;
+  document.querySelectorAll('.nav-item,.mobile-navigation button').forEach(item=>item.classList.remove('active'));
+  document.querySelectorAll(`[data-scroll-target="${button.dataset.scrollTarget}"]`).forEach(item=>item.classList.add('active'));
+  target.scrollIntoView({behavior:'smooth',block:'start'});
+}));
 
 $('financeMonth').value=currentMonthIso();
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();

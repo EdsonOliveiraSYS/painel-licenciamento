@@ -1,6 +1,6 @@
-# Central de Licenças ED SYSTEMS
+# Central de Licenças FitNexus
 
-Painel web estático e responsivo para GitHub Pages. A autenticação, autorização, dados e emissão de licenças permanecem no Supabase.
+Painel web responsivo, com prioridade para celular, publicado no GitHub Pages. A autenticação, autorização, dados e emissão de licenças permanecem no Supabase.
 
 ## Segurança
 
