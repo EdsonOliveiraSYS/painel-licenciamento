@@ -48,14 +48,14 @@
         <div class="topbar-actions"><button id="refreshButton" class="button secondary" type="button">↻ <span>Atualizar</span></button><div class="operator-chip"><span class="operator-avatar">AD</span><span><b>Administrador</b><small>Conta protegida</small></span></div></div>
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
-      <section id="metrics" class="metrics" aria-label="Resumo das licenças"></section>
+      <section id="metrics" class="metrics" data-central-panel="overview" aria-label="Resumo das licenças"></section>
       <nav class="section-switcher" aria-label="Atalhos da Central">
         <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
         <button data-section-target="clientDirectoryTitle" type="button">Licenças</button>
         <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
         <button data-section-target="billingTitle" type="button">Cobranças</button>
       </nav>
-      <section class="update-panel" aria-labelledby="updatePanelTitle">
+      <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
           <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
           <button id="toggleUpdatePublisher" class="button secondary" type="button">Publicar nova versão</button>
@@ -81,7 +81,7 @@
           <section class="release-section update-clients"><div class="section-card-head"><div><h3>Clientes que precisam atualizar</h3><p>Somente instalações ativas ou em teste.</p></div></div><div id="outdatedClients" class="outdated-clients"></div></section>
         </div>
       </section>
-      <section class="finance-overview" aria-labelledby="financeOverviewTitle">
+      <section class="finance-overview" data-central-panel="revenue" aria-labelledby="financeOverviewTitle">
         <div class="finance-overview-head">
           <div><p class="eyebrow">RESULTADO FINANCEIRO</p><h2 id="financeOverviewTitle">Receitas do licenciamento</h2><p id="financeCaption">Resumo das cobranças do período selecionado.</p></div>
           <label for="financeMonth">Período<input id="financeMonth" type="month"></label>
@@ -89,20 +89,20 @@
         <div id="financeMetrics" class="finance-metrics" aria-live="polite"></div>
         <div id="financeRecent" class="finance-recent"></div>
       </section>
-      <section class="template-panel" aria-labelledby="templatePanelTitle">
+      <section class="template-panel" data-central-panel="communication" aria-labelledby="templatePanelTitle">
         <div class="template-panel-head"><div><p class="eyebrow">COMUNICAÇÃO</p><h2 id="templatePanelTitle">Modelos de mensagens</h2><p>Textos utilizados nos avisos internos e preparados para WhatsApp/e-mail.</p></div><button id="editTemplatesButton" class="button secondary" type="button">Editar modelos</button></div>
         <div id="emailProviderStatus" class="email-provider-status" aria-live="polite"></div>
         <div id="templateSummary" class="template-summary"></div>
         <div class="delivery-head"><strong>Últimos e-mails</strong><span>Registro das tentativas realizadas pela Central</span></div>
         <div id="emailDeliveryHistory" class="email-delivery-history"></div>
       </section>
-      <section class="toolbar" aria-label="Filtros">
+      <section class="toolbar" data-central-panel="licenses" aria-label="Filtros">
         <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
         <select id="statusFilter">
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
       </section>
-      <section class="client-directory" aria-labelledby="clientDirectoryTitle">
+      <section class="client-directory" data-central-panel="licenses" aria-labelledby="clientDirectoryTitle">
         <div class="client-directory-head">
           <div><p class="eyebrow">ACADEMIAS</p><h2 id="clientDirectoryTitle">Base de clientes</h2><p>Consulte primeiro as instalações em operação e encontre os demais estados em abas separadas.</p></div>
           <span id="clientDirectoryCount" class="client-directory-count"></span>
@@ -116,14 +116,14 @@
           <button type="button" data-client-view="all" role="tab" aria-selected="false">Todas <span id="clientCountAll">0</span></button>
         </div>
       </section>
-      <section class="billing-panel" aria-labelledby="billingTitle">
+      <section class="billing-panel" data-central-panel="billing" aria-labelledby="billingTitle">
         <div class="billing-head">
           <div><p class="eyebrow">FINANCEIRO DO LICENCIAMENTO</p><h2 id="billingTitle">Inadimplências</h2><p id="billingSummary">Nenhuma cobrança vencida.</p></div>
           <button id="exportDelinquency" class="button secondary" type="button">Exportar lista CSV</button>
         </div>
         <div id="delinquencyList" class="billing-list"></div>
       </section>
-      <section id="installationList" class="installation-list" aria-live="polite"></section>
+      <section id="installationList" class="installation-list" data-central-panel="licenses" aria-live="polite"></section>
     </main>
   </section>
 

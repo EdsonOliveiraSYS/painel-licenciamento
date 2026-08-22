@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='fitnexus-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active';
+let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview';
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -373,16 +373,17 @@ $('releaseHistory').addEventListener('click',event=>{const button=event.target.c
 $('financeRecent').addEventListener('click',event=>{const edit=event.target.closest('[data-revenue-edit]'),remove=event.target.closest('[data-revenue-delete]');if(edit)manageRevenue('edit',edit.dataset.revenueEdit);if(remove)manageRevenue('delete',remove.dataset.revenueDelete);});
 $('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 
-document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>{
-  const target=$(button.dataset.scrollTarget);if(!target)return;
-  document.querySelectorAll('.nav-item,.mobile-navigation button').forEach(item=>item.classList.remove('active'));
-  document.querySelectorAll(`[data-scroll-target="${button.dataset.scrollTarget}"]`).forEach(item=>item.classList.add('active'));
-  target.scrollIntoView({behavior:'smooth',block:'start'});
-}));
-document.querySelectorAll('[data-section-target]').forEach(button=>button.addEventListener('click',()=>{
-  document.querySelectorAll('[data-section-target]').forEach(item=>item.classList.toggle('active',item===button));
-  $(button.dataset.sectionTarget)?.scrollIntoView({behavior:'smooth',block:'start'});
-}));
+const panelForTarget={metrics:'overview',installationList:'licenses',billingTitle:'billing',templatePanelTitle:'communication',updatePanelTitle:'updates',financeOverviewTitle:'revenue'};
+function switchCentralPanel(panel){
+  centralPanel=panel;
+  document.querySelectorAll('[data-central-panel]').forEach(item=>item.classList.toggle('central-hidden',item.dataset.centralPanel!==panel));
+  document.querySelectorAll('.nav-item,.mobile-navigation button').forEach(item=>item.classList.toggle('active',panelForTarget[item.dataset.scrollTarget]===panel));
+  document.querySelectorAll('[data-section-target]').forEach(item=>item.classList.toggle('active',panelForTarget[item.dataset.sectionTarget]===panel));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>switchCentralPanel(panelForTarget[button.dataset.scrollTarget]||'overview')));
+document.querySelectorAll('[data-section-target]').forEach(button=>button.addEventListener('click',()=>switchCentralPanel(panelForTarget[button.dataset.sectionTarget]||'overview')));
+switchCentralPanel(centralPanel);
 
 $('financeMonth').value=currentMonthIso();
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
