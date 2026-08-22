@@ -91,8 +91,9 @@ function updateStatusLabel(item){
 function renderUpdateCenter(){
   const stable=latestRelease('stable'),beta=latestRelease('beta');
   const targetFor=item=>latestRelease(item.update_channel==='beta'?'beta':'stable');
-  const outdated=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;});
-  const updated=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)>=0;}).length;
+  const activeInstallations=installations.filter(item=>item.status==='active'||item.status==='trial');
+  const outdated=activeInstallations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;});
+  const updated=activeInstallations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)>=0;}).length;
   $('updateOverview').innerHTML=`<article><span>Versão estável</span><strong>${escapeHtml(stable?.version||'Não publicada')}</strong><small>${stable?formatDate(stable.published_at):'Envie o primeiro instalador'}</small></article><article><span>Clientes atualizados</span><strong>${updated}</strong><small>Na versão do canal escolhido</small></article><article class="${outdated.length?'attention':''}"><span>Precisam atualizar</span><strong>${outdated.length}</strong><small>${outdated.length?'Veja a lista abaixo':'Todos em dia'}</small></article><article><span>Canal beta</span><strong>${escapeHtml(beta?.version||'—')}</strong><small>${beta?'Disponível para testes':'Sem versão beta'}</small></article>`;
   if(!outdated.length){$('outdatedClients').innerHTML='<div class="update-empty">Nenhum cliente precisa atualizar neste momento.</div>';return;}
   $('outdatedClients').innerHTML=`<div class="update-list-head"><strong>Clientes que precisam atualizar</strong><span>${outdated.length} instalação(ões)</span></div><div class="table-scroll"><table><thead><tr><th>Academia</th><th>Instalada</th><th>Disponível</th><th>Andamento</th><th>Último contato</th><th>Automático</th></tr></thead><tbody>${outdated.map(item=>{const academy=item.academies||{},target=targetFor(item);return `<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.cnpj||'CNPJ não informado')}</span></td><td>${escapeHtml(item.app_version||'Não informada')}</td><td><strong>${escapeHtml(target?.version||'—')}</strong>${target?.mandatory?'<span class="update-required">Obrigatória</span>':''}</td><td><span class="update-progress ${escapeHtml(item.update_status||'unknown')}">${escapeHtml(updateStatusLabel(item))}</span>${item.update_error?`<small>${escapeHtml(item.update_error)}</small>`:''}</td><td>${formatDate(item.last_seen_at)}</td><td><button class="button secondary compact" data-update-auto="${item.id}" data-enabled="${item.update_auto_enabled!==false?'true':'false'}" type="button">${item.update_auto_enabled!==false?'Ligado':'Desligado'}</button></td></tr>`;}).join('')}</tbody></table></div>`;
@@ -131,20 +132,18 @@ function toggleUpdatePublisher(show){$('updatePublisher').classList.toggle('hidd
 
 async function publishUpdate(event){
   event.preventDefault();if(publishingUpdate)return;
-  const version=$('updateVersion').value.trim().replace(/^v/i,''),channel=$('updateChannel').value,minVersion=$('updateMinVersion').value.trim().replace(/^v/i,''),file=$('updateInstaller').files[0];
+  const version=$('updateVersion').value.trim().replace(/^v/i,''),channel=$('updateChannel').value,minVersion=$('updateMinVersion').value.trim().replace(/^v/i,''),file=$('updateInstaller').files[0],manualDelivery=$('updateManualDelivery').checked;
   $('updatePublishError').textContent='';
   if(!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(version)){ $('updatePublishError').textContent='Informe a versão no formato 1.2.3.';return; }
   if(minVersion&&!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(minVersion)){ $('updatePublishError').textContent='A versão mínima deve usar o formato 1.2.3.';return; }
-  if(!file||!file.name.toLowerCase().endsWith('.exe')){ $('updatePublishError').textContent='Selecione o instalador .exe desta versão.';return; }
+  if(!manualDelivery&&(!file||!file.name.toLowerCase().endsWith('.exe'))){ $('updatePublishError').textContent='Selecione o instalador .exe ou marque o aviso manual.';return; }
   if(appReleases.some(item=>item.version===version&&item.channel===channel)){ $('updatePublishError').textContent='Esta versão já existe nesse canal.';return; }
   publishingUpdate=true;$('publishUpdateButton').disabled=true;$('publishUpdateButton').textContent='Preparando...';
   try{
-    $('updatePublishStatus').textContent='Calculando a integridade SHA-256 do instalador...';
-    const sha256=await sha256File(file),installerPath=`${channel}/${version}/Academia-Setup-${version}.exe`;
-    $('updatePublishStatus').textContent='Enviando o instalador para o armazenamento privado...';
-    await uploadUpdateInstaller(installerPath,file);
+    let sha256=null,installerPath=null,installerSize=null;
+    if(!manualDelivery){$('updatePublishStatus').textContent='Calculando a integridade SHA-256 do instalador...';sha256=await sha256File(file);installerPath=`${channel}/${version}/Academia-Setup-${version}.exe`;installerSize=file.size;$('updatePublishStatus').textContent='Enviando o instalador para o armazenamento privado...';await uploadUpdateInstaller(installerPath,file);}
     $('updatePublishStatus').textContent='Publicando a versão para os clientes...';
-    await api('/rest/v1/app_releases',{method:'POST',body:{version,channel,status:'published',release_notes:$('updateNotes').value.trim(),mandatory:$('updateMandatory').checked,min_version:minVersion||null,installer_path:installerPath,installer_sha256:sha256,installer_size_bytes:file.size,published_at:new Date().toISOString(),created_by:session.user.id}});
+    await api('/rest/v1/app_releases',{method:'POST',body:{version,channel,status:'published',release_notes:$('updateNotes').value.trim(),mandatory:$('updateMandatory').checked,min_version:minVersion||null,delivery_mode:manualDelivery?'manual':'automatic',installer_path:installerPath,installer_sha256:sha256,installer_size_bytes:installerSize,published_at:new Date().toISOString(),created_by:session.user.id}});
     event.target.reset();$('updateChannel').value='stable';toggleUpdatePublisher(false);showToast(`Versão ${version} publicada com segurança.`);await loadInstallations();
   }catch(error){$('updatePublishError').textContent=error.message;$('updatePublishStatus').textContent='A publicação não foi concluída.';}
   finally{publishingUpdate=false;$('publishUpdateButton').disabled=false;$('publishUpdateButton').textContent='Enviar e publicar';}
@@ -182,7 +181,7 @@ function render(){
   const countByStatus=statusValue=>installations.filter(item=>item.status===statusValue).length;
   const countUpdates=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;}).length;
   $('clientCountActive').textContent=countByStatus('active');$('clientCountTrial').textContent=countByStatus('trial');$('clientCountExpired').textContent=countByStatus('expired');$('clientCountInactive').textContent=installations.filter(item=>['inactive','blocked','tampered'].includes(item.status)).length;$('clientCountUpdates').textContent=countUpdates;$('clientCountAll').textContent=installations.length;
-  const inSelectedView=item=>{if(clientView==='all')return true;if(clientView==='updates'){const target=targetFor(item);return Boolean(target&&compareVersions(item.app_version||'0',target.version)<0);}if(clientView==='inactive')return ['inactive','blocked','tampered'].includes(item.status);return item.status===clientView;};
+  const inSelectedView=item=>{if(['inactive','blocked','tampered'].includes(item.status))return false;if(clientView==='all')return true;if(clientView==='updates'){const target=targetFor(item);return Boolean(target&&compareVersions(item.app_version||'0',target.version)<0);}if(clientView==='inactive')return false;return item.status===clientView;};
   const filtered=installations.filter(item=>{const academy=item.academies||{};return inSelectedView(item)&&(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
   $('clientDirectoryCount').textContent=`${filtered.length} de ${installations.length} instalação(ões)`;
   if(!filtered.length){$('installationList').innerHTML='<div class="empty">Nenhuma instalação encontrada.</div>';return;}
@@ -322,6 +321,7 @@ $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomatio
 $('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(true));
 $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
 $('updatePublisher').addEventListener('submit',publishUpdate);
+$('updateManualDelivery').addEventListener('change',event=>{const manual=event.target.checked;$('updateInstaller').required=!manual;$('updateInstaller').disabled=manual;$('updatePublishStatus').textContent=manual?'O cliente verá o aviso e solicitará a atualização ao suporte. Nenhum arquivo será enviado.':'O arquivo ficará privado e será conferido por SHA-256 antes da instalação.';});
 $('outdatedClients').addEventListener('click',event=>{const button=event.target.closest('[data-update-auto]');if(button)toggleClientAutomaticUpdate(button.dataset.updateAuto,button.dataset.enabled==='true');});
 $('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 

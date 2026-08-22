@@ -62,6 +62,7 @@
           </div>
           <label for="updateNotes">O que mudou</label><textarea id="updateNotes" rows="3" maxlength="4000" placeholder="Melhorias e correções desta versão"></textarea>
           <label for="updateInstaller">Instalador Windows (.exe)</label><input id="updateInstaller" type="file" accept=".exe,application/x-msdownload,application/vnd.microsoft.portable-executable" required>
+          <label class="checkbox"><input id="updateManualDelivery" type="checkbox"> Publicar somente aviso manual, sem instalador</label>
           <label class="checkbox"><input id="updateMandatory" type="checkbox"> Atualização obrigatória</label>
           <p id="updatePublishStatus" class="provider-note" aria-live="polite">O arquivo ficará privado e será conferido por SHA-256 antes da instalação.</p>
           <p id="updatePublishError" class="error" role="alert"></p>
