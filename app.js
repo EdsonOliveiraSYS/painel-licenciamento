@@ -56,7 +56,7 @@ async function loadDelinquentCharges(){
 async function loadFinancialCharges(renderAfter=true){
   const bounds=monthBounds($('financeMonth').value);if(!bounds)return;
   $('financeMetrics').innerHTML='<article class="finance-card"><span>Atualizando</span><strong>...</strong></article>';
-  const fields='id,academy_id,amount_cents,due_date,status,paid_at,billing_cycle';
+  const fields='id,license_id,installation_id,academy_id,amount_cents,due_date,status,paid_at,billing_cycle';
   const [dueRows,paidRows]=await Promise.all([
     api(`/rest/v1/license_charges?select=${fields}&due_date=gte.${bounds.start}&due_date=lt.${bounds.end}&order=due_date.desc`),
     api(`/rest/v1/license_charges?select=${fields}&paid_at=gte.${encodeURIComponent(bounds.startTime)}&paid_at=lt.${encodeURIComponent(bounds.endTime)}&order=paid_at.desc`)
@@ -80,7 +80,7 @@ const compareVersions=(left,right)=>{const a=versionParts(left),b=versionParts(r
 const latestRelease=channel=>appReleases.filter(item=>item.status==='published'&&item.channel===channel).sort((a,b)=>compareVersions(b.version,a.version))[0]||null;
 
 async function loadAppReleases(){
-  appReleases=await api('/rest/v1/app_releases?select=id,version,channel,status,release_notes,mandatory,min_version,installer_path,installer_sha256,installer_size_bytes,published_at,created_at&order=created_at.desc')||[];
+  appReleases=await api('/rest/v1/app_releases?select=id,version,channel,status,release_notes,mandatory,min_version,delivery_mode,installer_path,installer_sha256,installer_size_bytes,published_at,created_at,updated_at&order=created_at.desc')||[];
 }
 
 function updateStatusLabel(item){
@@ -95,8 +95,37 @@ function renderUpdateCenter(){
   const outdated=activeInstallations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;});
   const updated=activeInstallations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)>=0;}).length;
   $('updateOverview').innerHTML=`<article><span>Versão estável</span><strong>${escapeHtml(stable?.version||'Não publicada')}</strong><small>${stable?formatDate(stable.published_at):'Envie o primeiro instalador'}</small></article><article><span>Clientes atualizados</span><strong>${updated}</strong><small>Na versão do canal escolhido</small></article><article class="${outdated.length?'attention':''}"><span>Precisam atualizar</span><strong>${outdated.length}</strong><small>${outdated.length?'Veja a lista abaixo':'Todos em dia'}</small></article><article><span>Canal beta</span><strong>${escapeHtml(beta?.version||'—')}</strong><small>${beta?'Disponível para testes':'Sem versão beta'}</small></article>`;
+  renderReleaseManagement();
   if(!outdated.length){$('outdatedClients').innerHTML='<div class="update-empty">Nenhum cliente precisa atualizar neste momento.</div>';return;}
   $('outdatedClients').innerHTML=`<div class="update-list-head"><strong>Clientes que precisam atualizar</strong><span>${outdated.length} instalação(ões)</span></div><div class="table-scroll"><table><thead><tr><th>Academia</th><th>Instalada</th><th>Disponível</th><th>Andamento</th><th>Último contato</th><th>Automático</th></tr></thead><tbody>${outdated.map(item=>{const academy=item.academies||{},target=targetFor(item);return `<tr><td><strong>${escapeHtml(academy.name||'Academia')}</strong><span>${escapeHtml(academy.cnpj||'CNPJ não informado')}</span></td><td>${escapeHtml(item.app_version||'Não informada')}</td><td><strong>${escapeHtml(target?.version||'—')}</strong>${target?.mandatory?'<span class="update-required">Obrigatória</span>':''}</td><td><span class="update-progress ${escapeHtml(item.update_status||'unknown')}">${escapeHtml(updateStatusLabel(item))}</span>${item.update_error?`<small>${escapeHtml(item.update_error)}</small>`:''}</td><td>${formatDate(item.last_seen_at)}</td><td><button class="button secondary compact" data-update-auto="${item.id}" data-enabled="${item.update_auto_enabled!==false?'true':'false'}" type="button">${item.update_auto_enabled!==false?'Ligado':'Desligado'}</button></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
+function releaseSummary(release){return `${escapeHtml(release.version)} · ${release.channel==='beta'?'Beta':'Estável'}${release.delivery_mode==='manual'?' · Aviso manual':''}`;}
+function renderReleaseManagement(){
+  const active=appReleases.filter(item=>item.status==='published'),history=appReleases.filter(item=>item.status!=='published');
+  $('activeReleases').innerHTML=active.length?active.map(item=>`<article class="release-row"><div><strong>${releaseSummary(item)}</strong><p>${escapeHtml(item.release_notes||'Sem descrição.')}</p><small>Publicado em ${formatDate(item.published_at)}</small></div><div class="release-actions"><button class="button secondary compact" data-release-action="edit" data-release-id="${item.id}">Editar</button><button class="button secondary compact warning" data-release-action="withdraw" data-release-id="${item.id}">Desativar aviso</button><button class="button secondary compact danger" data-release-action="delete" data-release-id="${item.id}">Excluir</button></div></article>`).join(''):'<div class="release-empty">Nenhum aviso ativo. As instalações não verão notificações de atualização.</div>';
+  $('releaseHistory').innerHTML=history.length?history.map(item=>`<article class="release-row historical"><div><strong>${releaseSummary(item)}</strong><p>${escapeHtml(item.release_notes||'Sem descrição.')}</p><small>${item.status==='withdrawn'?'Encerrado':'Rascunho'} em ${formatDate(item.updated_at||item.created_at)}</small></div><div class="release-actions"><button class="button secondary compact" data-release-action="restore" data-release-id="${item.id}">Restaurar</button><button class="button secondary compact danger" data-release-action="delete" data-release-id="${item.id}">Excluir</button></div></article>`).join(''):'<div class="release-empty">Nenhuma atualização foi encerrada ainda.</div>';
+}
+
+async function manageRelease(action,id){
+  const release=appReleases.find(item=>item.id===id);if(!release)return;
+  try{
+    if(action==='edit'){
+      const notes=prompt(`Editar descrição da versão ${release.version}:`,release.release_notes||'');if(notes===null)return;
+      const mandatory=confirm('Esta atualização deve ser obrigatória?\n\nOK = obrigatória · Cancelar = opcional.');
+      await api(`/rest/v1/app_releases?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{release_notes:notes.trim()||'Sem descrição.',mandatory,updated_at:new Date().toISOString()}});showToast(`Versão ${release.version} atualizada.`);
+    }else if(action==='withdraw'){
+      if(!confirm(`Desativar o aviso ${release.version}? Ele deixará de aparecer nos clientes após a próxima sincronização e ficará no histórico.`))return;
+      await api(`/rest/v1/app_releases?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{status:'withdrawn',updated_at:new Date().toISOString()}});showToast(`Aviso ${release.version} encerrado e movido ao histórico.`);
+    }else if(action==='restore'){
+      if(!confirm(`Restaurar o aviso ${release.version} para os clientes?`))return;
+      await api(`/rest/v1/app_releases?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString(),updated_at:new Date().toISOString()}});showToast(`Aviso ${release.version} restaurado.`);
+    }else if(action==='delete'){
+      if(!confirm(`Excluir permanentemente a versão ${release.version}? Esta ação não poderá ser desfeita.`))return;
+      await api(`/rest/v1/app_releases?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'});showToast(`Versão ${release.version} excluída.`);
+    }
+    await loadInstallations();
+  }catch(error){showToast(error.message,true);}
 }
 
 async function sha256File(file){const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');}
@@ -180,8 +209,8 @@ function render(){
   const targetFor=item=>latestRelease(item.update_channel==='beta'?'beta':'stable');
   const countByStatus=statusValue=>installations.filter(item=>item.status===statusValue).length;
   const countUpdates=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;}).length;
-  $('clientCountActive').textContent=countByStatus('active');$('clientCountTrial').textContent=countByStatus('trial');$('clientCountExpired').textContent=countByStatus('expired');$('clientCountUpdates').textContent=countUpdates;$('clientCountAll').textContent=installations.filter(item=>!['inactive','blocked','tampered'].includes(item.status)).length;
-  const inSelectedView=item=>{if(['inactive','blocked','tampered'].includes(item.status))return false;if(clientView==='all')return true;if(clientView==='updates'){const target=targetFor(item);return Boolean(target&&compareVersions(item.app_version||'0',target.version)<0);}if(clientView==='inactive')return false;return item.status===clientView;};
+  $('clientCountActive').textContent=countByStatus('active');$('clientCountTrial').textContent=countByStatus('trial');$('clientCountExpired').textContent=countByStatus('expired');$('clientCountUpdates').textContent=countUpdates;$('clientCountInactive').textContent=countByStatus('inactive');$('clientCountAll').textContent=installations.length;
+  const inSelectedView=item=>{if(clientView==='all')return true;if(clientView==='updates'){const target=targetFor(item);return Boolean(target&&compareVersions(item.app_version||'0',target.version)<0);}return item.status===clientView;};
   const filtered=installations.filter(item=>{const academy=item.academies||{};return inSelectedView(item)&&(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
   $('clientDirectoryCount').textContent=`${filtered.length} de ${installations.length} instalação(ões)`;
   if(!filtered.length){$('installationList').innerHTML='<div class="empty">Nenhuma instalação encontrada.</div>';return;}
@@ -205,7 +234,23 @@ function renderFinancialSummary(){
   const academyName=id=>installations.find(item=>item.academy_id===id)?.academies?.name||'Academia';
   const statusLabels={pending:'Pendente',paid:'Paga',overdue:'Vencida',waived:'Isenta',cancelled:'Cancelada'};
   const recent=[...financialCharges].sort((a,b)=>String(b.paid_at||b.due_date).localeCompare(String(a.paid_at||a.due_date))).slice(0,8);
-  $('financeRecent').innerHTML=recent.length?recent.map(charge=>`<div class="finance-row"><strong>${escapeHtml(academyName(charge.academy_id))}</strong><span>Vence ${formatDateOnly(charge.due_date)}</span><span>${statusLabels[charge.status]||escapeHtml(charge.status)}</span><strong>${formatMoneyCents(charge.amount_cents)}</strong></div>`).join(''):'<div class="finance-empty">Ainda não existem cobranças neste período.</div>';
+  $('financeRecent').innerHTML=recent.length?recent.map(charge=>`<div class="finance-row"><strong>${escapeHtml(academyName(charge.academy_id))}</strong><span>Vence ${formatDateOnly(charge.due_date)}</span><span>${statusLabels[charge.status]||escapeHtml(charge.status)}</span><strong>${formatMoneyCents(charge.amount_cents)}</strong><div class="row-actions"><button class="button secondary compact" data-revenue-edit="${charge.id}">Editar</button><button class="button secondary compact danger" data-revenue-delete="${charge.id}">Excluir</button></div></div>`).join(''):'<div class="finance-empty">Ainda não existem cobranças neste período.</div>';
+}
+
+async function manageRevenue(action,id){
+  const charge=financialCharges.find(item=>item.id===id);if(!charge)return;
+  try{
+    if(action==='edit'){
+      const amount=prompt('Valor da receita (R$):',(Number(charge.amount_cents)/100).toFixed(2).replace('.',','));if(amount===null)return;
+      const normalized=Number(String(amount).replace(',','.'));if(!Number.isFinite(normalized)||normalized<=0)throw new Error('Informe um valor maior que zero.');
+      const dueDate=prompt('Data de vencimento (AAAA-MM-DD):',charge.due_date);if(dueDate===null)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(dueDate))throw new Error('Use a data no formato AAAA-MM-DD.');
+      await api(`/rest/v1/license_charges?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{amount_cents:Math.round(normalized*100),due_date:dueDate,updated_at:new Date().toISOString()}});showToast('Receita atualizada.');
+    }else{
+      if(!confirm('Excluir este lançamento de receita? Use apenas para testes ou registros lançados por engano.'))return;
+      await api(`/rest/v1/license_charges?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'});showToast('Receita excluída do painel.');
+    }
+    await loadInstallations();
+  }catch(error){showToast(error.message,true);}
 }
 
 function renderMessageTemplates(){
@@ -323,6 +368,9 @@ $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(fa
 $('updatePublisher').addEventListener('submit',publishUpdate);
 $('updateManualDelivery').addEventListener('change',event=>{const manual=event.target.checked;$('updateInstaller').required=!manual;$('updateInstaller').disabled=manual;$('updatePublishStatus').textContent=manual?'O cliente verá o aviso e solicitará a atualização ao suporte. Nenhum arquivo será enviado.':'O arquivo ficará privado e será conferido por SHA-256 antes da instalação.';});
 $('outdatedClients').addEventListener('click',event=>{const button=event.target.closest('[data-update-auto]');if(button)toggleClientAutomaticUpdate(button.dataset.updateAuto,button.dataset.enabled==='true');});
+$('activeReleases').addEventListener('click',event=>{const button=event.target.closest('[data-release-action]');if(button)manageRelease(button.dataset.releaseAction,button.dataset.releaseId);});
+$('releaseHistory').addEventListener('click',event=>{const button=event.target.closest('[data-release-action]');if(button)manageRelease(button.dataset.releaseAction,button.dataset.releaseId);});
+$('financeRecent').addEventListener('click',event=>{const edit=event.target.closest('[data-revenue-edit]'),remove=event.target.closest('[data-revenue-delete]');if(edit)manageRevenue('edit',edit.dataset.revenueEdit);if(remove)manageRevenue('delete',remove.dataset.revenueDelete);});
 $('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 
 document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>{
@@ -330,6 +378,10 @@ document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEven
   document.querySelectorAll('.nav-item,.mobile-navigation button').forEach(item=>item.classList.remove('active'));
   document.querySelectorAll(`[data-scroll-target="${button.dataset.scrollTarget}"]`).forEach(item=>item.classList.add('active'));
   target.scrollIntoView({behavior:'smooth',block:'start'});
+}));
+document.querySelectorAll('[data-section-target]').forEach(button=>button.addEventListener('click',()=>{
+  document.querySelectorAll('[data-section-target]').forEach(item=>item.classList.toggle('active',item===button));
+  $(button.dataset.sectionTarget)?.scrollIntoView({behavior:'smooth',block:'start'});
 }));
 
 $('financeMonth').value=currentMonthIso();

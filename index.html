@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · FitNexus</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=fitnexus-central-1.1.2">
+  <link rel="stylesheet" href="style.css?v=fitnexus-central-2.0.0">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -38,6 +38,7 @@
         <button class="nav-item" type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
         <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
         <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
+        <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
       </nav>
       <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
     </aside>
@@ -48,6 +49,12 @@
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" aria-label="Resumo das licenças"></section>
+      <nav class="section-switcher" aria-label="Atalhos da Central">
+        <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
+        <button data-section-target="clientDirectoryTitle" type="button">Licenças</button>
+        <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
+        <button data-section-target="billingTitle" type="button">Cobranças</button>
+      </nav>
       <section class="update-panel" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
           <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
@@ -68,7 +75,11 @@
           <p id="updatePublishError" class="error" role="alert"></p>
           <div class="modal-actions"><button id="cancelUpdatePublisher" class="button secondary" type="button">Cancelar</button><button id="publishUpdateButton" class="button primary" type="submit">Enviar e publicar</button></div>
         </form>
-        <div id="outdatedClients" class="outdated-clients"></div>
+        <div class="update-management-grid">
+          <section class="release-section"><div class="section-card-head"><div><h3>Avisos de atualização ativos</h3><p>Controle o que aparece nos sistemas dos clientes.</p></div></div><div id="activeReleases" class="release-list"></div></section>
+          <section class="release-section history"><div class="section-card-head"><div><h3>Histórico de atualizações</h3><p>Avisos encerrados e versões arquivadas.</p></div></div><div id="releaseHistory" class="release-list"></div></section>
+          <section class="release-section update-clients"><div class="section-card-head"><div><h3>Clientes que precisam atualizar</h3><p>Somente instalações ativas ou em teste.</p></div></div><div id="outdatedClients" class="outdated-clients"></div></section>
+        </div>
       </section>
       <section class="finance-overview" aria-labelledby="financeOverviewTitle">
         <div class="finance-overview-head">
@@ -101,6 +112,7 @@
           <button type="button" data-client-view="trial" role="tab" aria-selected="false">Em teste <span id="clientCountTrial">0</span></button>
           <button type="button" data-client-view="expired" role="tab" aria-selected="false">Vencidas <span id="clientCountExpired">0</span></button>
           <button type="button" data-client-view="updates" role="tab" aria-selected="false">Atualização <span id="clientCountUpdates">0</span></button>
+          <button type="button" data-client-view="inactive" role="tab" aria-selected="false">Inativas <span id="clientCountInactive">0</span></button>
           <button type="button" data-client-view="all" role="tab" aria-selected="false">Todas <span id="clientCountAll">0</span></button>
         </div>
       </section>
@@ -187,6 +199,6 @@
   </div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
-  <script src="app.js?v=fitnexus-central-1.1.3" defer></script>
+  <script src="app.js?v=fitnexus-central-2.0.0" defer></script>
 </body>
 </html>
