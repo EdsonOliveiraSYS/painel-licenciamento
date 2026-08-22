@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <meta name="description" content="Central privada de licenciamento FitNexus">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · FitNexus</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=fitnexus-1.0.0">
+  <link rel="stylesheet" href="style.css?v=fitnexus-central-1.1.2">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -89,6 +89,20 @@
         <select id="statusFilter">
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
+      </section>
+      <section class="client-directory" aria-labelledby="clientDirectoryTitle">
+        <div class="client-directory-head">
+          <div><p class="eyebrow">ACADEMIAS</p><h2 id="clientDirectoryTitle">Base de clientes</h2><p>Consulte primeiro as instalações em operação e encontre os demais estados em abas separadas.</p></div>
+          <span id="clientDirectoryCount" class="client-directory-count"></span>
+        </div>
+        <div id="clientTabs" class="client-tabs" role="tablist" aria-label="Filtrar academias por situação">
+          <button class="active" type="button" data-client-view="active" role="tab" aria-selected="true">Ativas <span id="clientCountActive">0</span></button>
+          <button type="button" data-client-view="trial" role="tab" aria-selected="false">Em teste <span id="clientCountTrial">0</span></button>
+          <button type="button" data-client-view="expired" role="tab" aria-selected="false">Vencidas <span id="clientCountExpired">0</span></button>
+          <button type="button" data-client-view="updates" role="tab" aria-selected="false">Atualização <span id="clientCountUpdates">0</span></button>
+          <button type="button" data-client-view="inactive" role="tab" aria-selected="false">Inativas <span id="clientCountInactive">0</span></button>
+          <button type="button" data-client-view="all" role="tab" aria-selected="false">Todas <span id="clientCountAll">0</span></button>
+        </div>
       </section>
       <section class="billing-panel" aria-labelledby="billingTitle">
         <div class="billing-head">
@@ -173,6 +187,6 @@
   </div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
-  <script src="app.js?v=fitnexus-1.0.0" defer></script>
+  <script src="app.js?v=fitnexus-central-1.1.2" defer></script>
 </body>
 </html>

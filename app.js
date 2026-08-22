@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='fitnexus-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[];
+let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active';
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -178,13 +178,19 @@ function render(){
   renderEmailIntegration();
   renderDelinquencies(overdueTotal);
   const query=$('search').value.trim().toLowerCase(),status=$('statusFilter').value;
-  const filtered=installations.filter(item=>{const academy=item.academies||{};return(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
+  const targetFor=item=>latestRelease(item.update_channel==='beta'?'beta':'stable');
+  const countByStatus=statusValue=>installations.filter(item=>item.status===statusValue).length;
+  const countUpdates=installations.filter(item=>{const target=targetFor(item);return target&&compareVersions(item.app_version||'0',target.version)<0;}).length;
+  $('clientCountActive').textContent=countByStatus('active');$('clientCountTrial').textContent=countByStatus('trial');$('clientCountExpired').textContent=countByStatus('expired');$('clientCountInactive').textContent=installations.filter(item=>['inactive','blocked','tampered'].includes(item.status)).length;$('clientCountUpdates').textContent=countUpdates;$('clientCountAll').textContent=installations.length;
+  const inSelectedView=item=>{if(clientView==='all')return true;if(clientView==='updates'){const target=targetFor(item);return Boolean(target&&compareVersions(item.app_version||'0',target.version)<0);}if(clientView==='inactive')return ['inactive','blocked','tampered'].includes(item.status);return item.status===clientView;};
+  const filtered=installations.filter(item=>{const academy=item.academies||{};return inSelectedView(item)&&(!status||item.status===status)&&(!query||`${academy.name||''} ${academy.cnpj||''} ${item.installation_id}`.toLowerCase().includes(query));});
+  $('clientDirectoryCount').textContent=`${filtered.length} de ${installations.length} instalação(ões)`;
   if(!filtered.length){$('installationList').innerHTML='<div class="empty">Nenhuma instalação encontrada.</div>';return;}
   $('installationList').innerHTML=filtered.map(item=>{
     const academy=item.academies||{},activeLicense=(item.licenses||[]).find(license=>license.status==='active');
     const blocked=['blocked','inactive'].includes(item.status);
     const cycleLabel={monthly:'Mensalidade',annual:'Anuidade',custom:'Personalizada',perpetual:'Sem vencimento'}[activeLicense?.billing_cycle]||'—';
-    return `<article class="installation"><div><h3>${escapeHtml(academy.name||'Academia em configuração')}</h3><span class="badge ${item.status}">${labels[item.status]||item.status}</span><div class="muted">CNPJ: ${escapeHtml(academy.cnpj||'não informado')}</div></div><div class="facts"><div><strong>Instalação:</strong> ${formatDate(item.installed_at)}</div><div><strong>Último contato:</strong> ${formatDate(item.last_seen_at)}</div><div><strong>Versão:</strong> ${escapeHtml(item.app_version||'—')}</div></div><div class="facts"><div><strong>Plano:</strong> ${cycleLabel}</div><div><strong>Licença até:</strong> ${formatDate(activeLicense?.expires_at)}</div><div class="muted">${escapeHtml(item.installation_id)}</div></div><div class="actions"><button class="button primary" data-issue="${item.id}" type="button">Licenciar</button>${activeLicense?`<button class="button secondary" data-billing="${item.id}" type="button">Plano e cobrança</button>`:''}<button class="button secondary" data-status="${blocked?'trial':'blocked'}" data-id="${item.id}" type="button">${blocked?'Desbloquear':'Bloquear'}</button><button class="button secondary" data-status="inactive" data-id="${item.id}" type="button">Inativar</button></div></article>`;
+    return `<article class="installation"><div><h3>${escapeHtml(academy.name||'Academia em configuração')}</h3><span class="badge ${item.status}">${labels[item.status]||item.status}</span><div class="muted">CNPJ: ${escapeHtml(academy.cnpj||'não informado')}</div></div><div class="facts"><div><strong>Instalação:</strong> ${formatDate(item.installed_at)}</div><div><strong>Último contato:</strong> ${formatDate(item.last_seen_at)}</div><div><strong>Versão:</strong> ${escapeHtml(item.app_version||'—')}</div></div><div class="facts"><div><strong>Plano:</strong> ${cycleLabel}</div><div><strong>Licença até:</strong> ${formatDate(activeLicense?.expires_at)}</div><div class="muted">${escapeHtml(item.installation_id)}</div></div><div class="actions"><button class="button primary" data-issue="${item.id}" type="button">Licenciar</button>${activeLicense?`<button class="button secondary" data-billing="${item.id}" type="button">Editar licença</button>`:''}<button class="button secondary" data-status="${blocked?'trial':'blocked'}" data-id="${item.id}" type="button">${blocked?'Desbloquear':'Bloquear'}</button><button class="button secondary" data-status="inactive" data-id="${item.id}" type="button">Inativar</button></div></article>`;
   }).join('');
 }
 
@@ -317,6 +323,7 @@ $('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(tr
 $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
 $('updatePublisher').addEventListener('submit',publishUpdate);
 $('outdatedClients').addEventListener('click',event=>{const button=event.target.closest('[data-update-auto]');if(button)toggleClientAutomaticUpdate(button.dataset.updateAuto,button.dataset.enabled==='true');});
+$('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 
 document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>{
   const target=$(button.dataset.scrollTarget);if(!target)return;
