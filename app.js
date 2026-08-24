@@ -309,7 +309,7 @@ async function issue(){
     if(!complimentary&&amount<=0)throw new Error('Informe um valor maior que zero ou marque como cortesia.');
     if(!complimentary&&!dueDate)throw new Error('Informe o vencimento da cobrança.');
     const data=await api('/functions/v1/license-issue',{method:'POST',body:{installationId:selected.id,days:Math.max(1,Math.min(3650,Number($('licenseDays').value||365))),perpetual:billingCycle==='perpetual',billingCycle,notes:$('licenseNotes').value.slice(0,500),complimentary,billingAmountCents:complimentary?0:Math.round(amount*100),billingDueDate:complimentary?null:dueDate}});
-    $('licenseToken').value=data.token;$('licenseResult').classList.remove('hidden');showToast('Licença emitida com sucesso.');await loadInstallations();
+    $('licenseToken').value=data.token;$('licenseResult').classList.remove('hidden');renderLicenseQrCode(data.token);showToast('Licença emitida com sucesso.');await loadInstallations();
   }catch(error){$('modalError').textContent=error.message;}
   finally{issuing=false;$('issueButton').disabled=false;$('issueButton').textContent='Gerar contrassenha';}
 }
@@ -381,6 +381,7 @@ function switchCentralPanel(panel){
   document.querySelectorAll('[data-section-target]').forEach(item=>item.classList.toggle('active',panelForTarget[item.dataset.sectionTarget]===panel));
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function renderLicenseQrCode(token){const target=$('licenseQrCode');if(!target)return;target.innerHTML='';if(!window.QRCode){target.textContent='QR Code indisponível. Use a chave abaixo.';return;}new QRCode(target,{text:token,width:196,height:196,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});}
 document.querySelectorAll('[data-scroll-target]').forEach(button=>button.addEventListener('click',()=>switchCentralPanel(panelForTarget[button.dataset.scrollTarget]||'overview')));
 document.querySelectorAll('[data-section-target]').forEach(button=>button.addEventListener('click',()=>switchCentralPanel(panelForTarget[button.dataset.sectionTarget]||'overview')));
 switchCentralPanel(centralPanel);
