@@ -50,10 +50,12 @@
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" data-central-panel="overview" aria-label="Resumo das licenças"></section>
       <nav class="section-switcher" aria-label="Atalhos da Central">
-        <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
+        <button data-section-target="metrics" type="button">Visão geral</button>
         <button data-section-target="clientDirectoryTitle" type="button">Licenças</button>
+        <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
         <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
         <button data-section-target="billingTitle" type="button">Cobranças</button>
+        <button data-section-target="templatePanelTitle" type="button">Comunicação</button>
       </nav>
       <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
@@ -130,8 +132,10 @@
   <nav class="mobile-navigation" aria-label="Navegação móvel">
     <button class="active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
     <button type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
+    <button type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
+    <button type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
     <button type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
-    <button type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Conta</span></button>
+    <button type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
   </nav>
 
   <div id="licenseModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="licenseTitle">
@@ -156,6 +160,19 @@
     <div class="modal-card">
       <div class="modal-head"><div><p class="eyebrow">PLANO COMERCIAL</p><h2 id="billingEditTitle">Editar plano e cobrança</h2></div><button class="icon-button" data-close-billing type="button" aria-label="Fechar">×</button></div>
       <p id="billingAcademy" class="modal-description"></p>
+      <section class="academy-identity-panel" aria-labelledby="academyIdentityTitle">
+        <h3 id="academyIdentityTitle">Identificação da academia</h3>
+        <p>Use esta correção administrativa se uma instalação chegar à Central sem os dados completos. O aplicativo voltará a enviar os dados locais em cada sincronização.</p>
+        <div class="billing-fields">
+          <div><label for="billingAcademyName">Nome da academia</label><input id="billingAcademyName" type="text" maxlength="160"></div>
+          <div><label for="billingAcademyCnpj">CNPJ</label><input id="billingAcademyCnpj" type="text" maxlength="18" inputmode="numeric"></div>
+        </div>
+        <div class="billing-fields">
+          <div><label for="billingAcademyLegalName">Razão social</label><input id="billingAcademyLegalName" type="text" maxlength="200"></div>
+          <div><label for="billingAcademyPhone">WhatsApp/telefone</label><input id="billingAcademyPhone" type="text" maxlength="40"></div>
+        </div>
+        <label for="billingAcademyEmail">E-mail</label><input id="billingAcademyEmail" type="email" maxlength="160">
+      </section>
       <div class="billing-info-note"><strong id="billingTechnicalValidity"></strong><span>Esta edição não gera uma nova chave e não altera a validade técnica da licença.</span></div>
       <label for="billingEditCycle">Plano</label><select id="billingEditCycle"><option value="monthly">Mensalidade</option><option value="annual">Anuidade</option><option value="custom">Personalizado</option><option value="perpetual">Sem vencimento</option></select>
       <div class="billing-fields">
