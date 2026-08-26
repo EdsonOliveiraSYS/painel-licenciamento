@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · FitNexus</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=fitnexus-central-2.0.5">
+  <link rel="stylesheet" href="style.css?v=fitnexus-central-2.1.0">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -39,6 +39,7 @@
         <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
         <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
         <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
+        <button class="nav-item" type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
       </nav>
       <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
     </aside>
@@ -86,7 +87,7 @@
       <section class="finance-overview" data-central-panel="revenue" aria-labelledby="financeOverviewTitle">
         <div class="finance-overview-head">
           <div><p class="eyebrow">RESULTADO FINANCEIRO</p><h2 id="financeOverviewTitle">Receitas do licenciamento</h2><p id="financeCaption">Resumo das cobranças do período selecionado.</p></div>
-          <label for="financeMonth">Período<input id="financeMonth" type="month"></label>
+          <div class="finance-filters"><label for="financeMonth">Período<input id="financeMonth" type="month"></label><label for="financePartnerFilter">Origem<select id="financePartnerFilter"><option value="">Todos os clientes</option><option value="direct">Clientes diretos</option></select></label><button id="printPartnerReport" class="button secondary" type="button">Gerar PDF</button></div>
         </div>
         <div id="financeMetrics" class="finance-metrics" aria-live="polite"></div>
         <div id="financeRecent" class="finance-recent"></div>
@@ -103,6 +104,10 @@
         <select id="statusFilter">
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
+      </section>
+      <section class="partners-panel" data-central-panel="partners" aria-labelledby="partnersTitle">
+        <div class="partners-head"><div><p class="eyebrow">CANAIS COMERCIAIS</p><h2 id="partnersTitle">Parceiros e revendas</h2><p>Organize academias próprias e indicações de parceiros. A cobrança do parceiro é independente da cobrança que ele faz aos próprios clientes.</p></div><button id="newPartnerButton" class="button primary" type="button">Novo parceiro</button></div>
+        <div id="partnersList" class="partners-list"></div>
       </section>
       <section class="client-directory" data-central-panel="licenses" aria-labelledby="clientDirectoryTitle">
         <div class="client-directory-head">
@@ -134,6 +139,7 @@
     <button type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
     <button type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
     <button type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
+    <button type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
     <button type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
     <button type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
   </nav>
@@ -143,7 +149,8 @@
       <div class="modal-head"><div><p class="eyebrow">ATIVAÇÃO</p><h2 id="licenseTitle">Emitir licença</h2></div><button class="icon-button" data-close type="button" aria-label="Fechar">×</button></div>
       <p id="licenseAcademy" class="modal-description"></p>
       <label for="licenseBillingCycle">Plano da licença</label>
-      <select id="licenseBillingCycle"><option value="monthly">Mensalidade</option><option value="annual">Anuidade</option><option value="custom">Prazo personalizado</option><option value="perpetual">Sem vencimento</option></select>
+      <select id="licenseBillingCycle"><option value="monthly">Mensalidade</option><option value="quarterly">Trimestral</option><option value="annual">Anuidade</option><option value="custom">Prazo personalizado</option><option value="perpetual">Sem vencimento</option></select>
+      <label for="licensePartner">Origem da academia</label><select id="licensePartner"><option value="">Cliente direto FitNexus</option></select>
       <div id="licenseCustomDays" class="hidden"><label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365"></div>
       <div class="billing-fields">
         <div><label for="licenseAmount">Valor da licença (R$)</label><input id="licenseAmount" type="number" min="0" max="10000000" step="0.01" value="0.00"></div>
@@ -174,7 +181,8 @@
         <label for="billingAcademyEmail">E-mail</label><input id="billingAcademyEmail" type="email" maxlength="160">
       </section>
       <div class="billing-info-note"><strong id="billingTechnicalValidity"></strong><span>Esta edição não gera uma nova chave e não altera a validade técnica da licença.</span></div>
-      <label for="billingEditCycle">Plano</label><select id="billingEditCycle"><option value="monthly">Mensalidade</option><option value="annual">Anuidade</option><option value="custom">Personalizado</option><option value="perpetual">Sem vencimento</option></select>
+      <label for="billingEditCycle">Plano</label><select id="billingEditCycle"><option value="monthly">Mensalidade</option><option value="quarterly">Trimestral</option><option value="annual">Anuidade</option><option value="custom">Personalizado</option><option value="perpetual">Sem vencimento</option></select>
+      <label for="billingPartner">Responsável financeiro</label><select id="billingPartner"><option value="">Academia / cliente direto</option></select>
       <div class="billing-fields">
         <div><label for="billingEditAmount">Valor (R$)</label><input id="billingEditAmount" type="number" min="0" max="10000000" step="0.01"></div>
         <div><label for="billingEditDueDate">Vencimento da cobrança</label><input id="billingEditDueDate" type="date"></div>
@@ -214,11 +222,12 @@
       <div class="modal-actions"><button data-close-template class="button secondary" type="button">Cancelar</button><button id="templateSaveButton" class="button primary" type="button">Salvar modelo</button></div>
     </div>
   </div>
+  <div id="partnerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="partnerModalTitle"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PARCEIRO COMERCIAL</p><h2 id="partnerModalTitle">Novo parceiro</h2></div><button class="icon-button" data-close-partner type="button" aria-label="Fechar">×</button></div><input id="partnerId" type="hidden"><label for="partnerName">Nome da empresa</label><input id="partnerName" type="text" maxlength="160" required><div class="billing-fields"><div><label for="partnerCnpj">CNPJ</label><input id="partnerCnpj" inputmode="numeric" maxlength="18"></div><div><label for="partnerDefaultAmount">Valor padrão por academia (R$)</label><input id="partnerDefaultAmount" type="number" min="0" step="0.01" value="70.00"></div></div><div class="billing-fields"><div><label for="partnerResponsible">Responsável</label><input id="partnerResponsible" maxlength="160"></div><div><label for="partnerPhone">WhatsApp</label><input id="partnerPhone" maxlength="40"></div></div><label for="partnerEmail">E-mail</label><input id="partnerEmail" type="email" maxlength="160"><label for="partnerNotes">Observações</label><textarea id="partnerNotes" rows="3" maxlength="500"></textarea><label class="checkbox"><input id="partnerActive" type="checkbox" checked> Parceiro ativo</label><p id="partnerError" class="error" role="alert"></p><div class="modal-actions"><button data-close-partner class="button secondary" type="button">Cancelar</button><button id="partnerSaveButton" class="button primary" type="button">Salvar parceiro</button></div></div></div>
   <div id="scanQrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scanQrTitle"><div class="modal-card qr-scan-modal"><div class="modal-head"><div><p class="eyebrow">LICENCIAMENTO</p><h2 id="scanQrTitle">Ler QR da instalação</h2></div><button class="icon-button" data-close-scan-qr type="button" aria-label="Fechar">×</button></div><p class="modal-description">Aponte a câmera para o QR Code exibido na tela de Licenciamento do FitNexus do cliente.</p><video id="scanQrVideo" autoplay playsinline muted></video><p id="scanQrError" class="error" role="alert"></p><div class="modal-actions"><button data-close-scan-qr class="button secondary" type="button">Cancelar</button></div></div></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=fitnexus-central-2.0.5" defer></script>
+  <script src="app.js?v=fitnexus-central-2.1.0" defer></script>
 </body>
 </html>
