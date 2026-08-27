@@ -345,7 +345,7 @@ async function issue(){
     const data=await api('/functions/v1/license-issue',{method:'POST',body:{installationId:selected.id,days:Math.max(1,Math.min(3650,Number($('licenseDays').value||365))),perpetual:billingCycle==='perpetual',billingCycle,partnerId:$('licensePartner').value||null,notes:$('licenseNotes').value.slice(0,500),complimentary,billingAmountCents:complimentary?0:Math.round(amount*100),billingDueDate:complimentary?null:dueDate}});
     $('licenseToken').value=data.token;$('licenseResult').classList.remove('hidden');renderLicenseQrCode(data.token);showToast('Licença emitida com sucesso.');await loadInstallations();
   }catch(error){$('modalError').textContent=error.message;}
-  finally{issuing=false;$('issueButton').disabled=false;$('issueButton').textContent='Gerar contrassenha';}
+  finally{issuing=false;$('issueButton').disabled=false;$('issueButton').textContent='Ativar licença';}
 }
 
 async function markPaid(chargeId){

@@ -158,9 +158,9 @@
       </div>
       <label class="checkbox"><input id="licenseComplimentary" type="checkbox" checked> Licença cortesia, sem cobrança</label>
       <label for="licenseNotes">Observações internas</label><textarea id="licenseNotes" rows="3" maxlength="500"></textarea>
-      <div id="licenseResult" class="token-box hidden"><label for="licenseToken">Chave de ativação</label><textarea id="licenseToken" rows="7" readonly></textarea><div id="licenseQrCode" class="license-qr-code" aria-label="QR Code para ativar a instalação"></div><p class="qr-help">No FitNexus, abra Licenciamento e use <strong>Ler QR Code de ativação</strong>. A chave continua disponível como alternativa.</p><button id="copyToken" class="button secondary full" type="button">Copiar chave</button></div>
+      <div id="licenseResult" class="token-box hidden"><label for="licenseToken">Chave de ativação (alternativa offline)</label><textarea id="licenseToken" rows="7" readonly></textarea><div id="licenseQrCode" class="license-qr-code" aria-label="QR Code para ativar a instalação"></div><p class="qr-help">A licença já foi registrada online. No computador do cliente, basta clicar em <strong>Verificar novamente</strong>. A chave abaixo é apenas uma alternativa offline.</p><button id="copyToken" class="button secondary full" type="button">Copiar chave alternativa</button></div>
       <p id="modalError" class="error" role="alert" aria-live="polite"></p>
-      <div class="modal-actions"><button data-close class="button secondary" type="button">Cancelar</button><button id="issueButton" class="button primary" type="button">Gerar contrassenha</button></div>
+      <div class="modal-actions"><button data-close class="button secondary" type="button">Cancelar</button><button id="issueButton" class="button primary" type="button">Ativar licença</button></div>
     </div>
   </div>
   <div id="billingModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="billingEditTitle">
