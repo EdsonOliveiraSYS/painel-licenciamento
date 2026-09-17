@@ -32,12 +32,14 @@
   <section id="appView" class="app-view hidden">
     <aside class="sidebar">
       <div class="sidebar-brand"><div class="brand-mark small"><img src="assets/zentryxfit.svg" alt=""></div><div><strong>ZentryxFit</strong><span>Central de licenças</span></div></div>
+      <div id="navigationHint" class="navigation-hint"><b>Visão geral</b><span>Acompanhe a operação da Central.</span></div>
       <nav class="primary-navigation" aria-label="Navegação principal">
         <button class="nav-item active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
         <button class="nav-item" type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
         <button class="nav-item" type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
         <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
         <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
+        <button class="nav-item" type="button" data-scroll-target="downloadsPanelTitle"><b>⇩</b><span>Downloads</span></button>
         <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
         <button class="nav-item" type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
         <button id="teamNav" class="nav-item hidden" type="button" data-scroll-target="teamPanelTitle"><b>♙</b><span>Equipe</span></button>
@@ -55,6 +57,7 @@
         <button data-section-target="metrics" type="button">Visão geral</button>
         <button data-section-target="clientDirectoryTitle" type="button">Licenças</button>
         <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
+        <button data-section-target="downloadsPanelTitle" type="button">Downloads</button>
         <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
         <button data-section-target="billingTitle" type="button">Cobranças</button>
         <button data-section-target="templatePanelTitle" type="button">Comunicação</button>
@@ -101,6 +104,11 @@
         <div class="delivery-head"><strong>Últimos e-mails</strong><span>Registro das tentativas realizadas pela Central</span></div>
         <div id="emailDeliveryHistory" class="email-delivery-history"></div>
       </section>
+      <section class="downloads-panel" data-central-panel="downloads" aria-labelledby="downloadsPanelTitle">
+        <div class="update-panel-head"><div><p class="eyebrow">DISTRIBUIÇÃO</p><h2 id="downloadsPanelTitle">Downloads do sistema</h2><p>Cadastre o link oficial hospedado no Google Drive ou no seu servidor. O arquivo continua sob seu controle.</p></div></div>
+        <form id="downloadForm" class="update-publisher"><div class="update-fields"><div><label for="downloadTitle">Nome</label><input id="downloadTitle" maxlength="120" required placeholder="ZentryxFit para Windows"></div><div><label for="downloadPlatform">Plataforma</label><select id="downloadPlatform"><option value="windows">Windows</option><option value="android">Android</option><option value="ios">iOS</option><option value="other">Outro</option></select></div><div><label for="downloadUrl">Link HTTPS</label><input id="downloadUrl" type="url" required placeholder="https://drive.google.com/..."></div></div><label for="downloadDescription">Descrição</label><textarea id="downloadDescription" rows="2" maxlength="400" placeholder="Ex.: instalador estável recomendado para novos clientes."></textarea><p id="downloadError" class="error"></p><div class="modal-actions"><button id="downloadSaveButton" class="button primary" type="submit">Salvar download</button></div></form>
+        <div id="downloadsList" class="release-section update-clients"></div>
+      </section>
       <section id="teamPanel" class="team-panel" data-central-panel="team" aria-labelledby="teamPanelTitle">
         <div class="team-panel-head">
           <div><p class="eyebrow">ACESSO ADMINISTRATIVO</p><h2 id="teamPanelTitle">Equipe de licenciamento</h2><p>Convide operadores para ativar, renovar e acompanhar academias. Somente proprietários podem administrar esta equipe.</p></div>
@@ -111,6 +119,7 @@
             <p>O convite é enviado por e-mail. A pessoa definirá a própria senha e entrará como <strong>operador</strong>.</p>
             <label for="teamInviteName">Nome completo</label><input id="teamInviteName" type="text" maxlength="120" autocomplete="name" required>
             <label for="teamInviteEmail">E-mail de trabalho</label><input id="teamInviteEmail" type="email" maxlength="160" autocomplete="email" required>
+            <label for="teamInvitePartner">Parceiro vinculado</label><select id="teamInvitePartner"><option value="">Sem parceiro — acesso geral</option></select>
             <p id="teamInviteError" class="error" role="alert" aria-live="polite"></p>
             <button id="teamInviteButton" class="button primary" type="submit">Enviar convite</button>
           </form>
@@ -121,7 +130,7 @@
         </div>
       </section>
       <section class="toolbar" data-central-panel="licenses" aria-label="Filtros">
-        <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
+        <input id="search" type="search" placeholder="Buscar academia, documento fiscal ou instalação">
         <select id="statusFilter">
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
@@ -193,8 +202,9 @@
         <p>Use esta correção administrativa se uma instalação chegar à Central sem os dados completos. O aplicativo voltará a enviar os dados locais em cada sincronização.</p>
         <div class="billing-fields">
           <div><label for="billingAcademyName">Nome da academia</label><input id="billingAcademyName" type="text" maxlength="160"></div>
-          <div><label for="billingAcademyCnpj">CNPJ</label><input id="billingAcademyCnpj" type="text" maxlength="18" inputmode="numeric"></div>
+          <div><label for="billingAcademyCountry">País da academia</label><select id="billingAcademyCountry"></select></div>
         </div>
+        <label for="billingAcademyTaxId">Documento fiscal</label><input id="billingAcademyTaxId" type="text" maxlength="40" autocomplete="off" placeholder="CNPJ, CUIT, RUT, RUC ou equivalente">
         <div class="billing-fields">
           <div><label for="billingAcademyLegalName">Razão social</label><input id="billingAcademyLegalName" type="text" maxlength="200"></div>
           <div><label for="billingAcademyPhone">WhatsApp/telefone</label><input id="billingAcademyPhone" type="text" maxlength="40"></div>
@@ -243,7 +253,7 @@
       <div class="modal-actions"><button data-close-template class="button secondary" type="button">Cancelar</button><button id="templateSaveButton" class="button primary" type="button">Salvar modelo</button></div>
     </div>
   </div>
-  <div id="partnerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="partnerModalTitle"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PARCEIRO COMERCIAL</p><h2 id="partnerModalTitle">Novo parceiro</h2></div><button class="icon-button" data-close-partner type="button" aria-label="Fechar">×</button></div><input id="partnerId" type="hidden"><label for="partnerName">Nome da empresa</label><input id="partnerName" type="text" maxlength="160" required><div class="billing-fields"><div><label for="partnerCnpj">CNPJ</label><input id="partnerCnpj" inputmode="numeric" maxlength="18"></div><div><label for="partnerDefaultAmount">Valor padrão por academia (R$)</label><input id="partnerDefaultAmount" type="number" min="0" step="0.01" value="70.00"></div></div><div class="billing-fields"><div><label for="partnerResponsible">Responsável</label><input id="partnerResponsible" maxlength="160"></div><div><label for="partnerPhone">WhatsApp</label><input id="partnerPhone" maxlength="40"></div></div><label for="partnerEmail">E-mail</label><input id="partnerEmail" type="email" maxlength="160"><label for="partnerNotes">Observações</label><textarea id="partnerNotes" rows="3" maxlength="500"></textarea><label class="checkbox"><input id="partnerActive" type="checkbox" checked> Parceiro ativo</label><p id="partnerError" class="error" role="alert"></p><div class="modal-actions"><button data-close-partner class="button secondary" type="button">Cancelar</button><button id="partnerSaveButton" class="button primary" type="button">Salvar parceiro</button></div></div></div>
+  <div id="partnerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="partnerModalTitle"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PARCEIRO COMERCIAL</p><h2 id="partnerModalTitle">Novo parceiro</h2></div><button class="icon-button" data-close-partner type="button" aria-label="Fechar">×</button></div><input id="partnerId" type="hidden"><label for="partnerName">Nome da empresa</label><input id="partnerName" type="text" maxlength="160" required><div class="billing-fields"><div><label for="partnerCountry">País</label><select id="partnerCountry"></select></div><div><label for="partnerDefaultAmount">Valor padrão por academia (R$)</label><input id="partnerDefaultAmount" type="number" min="0" step="0.01" value="70.00"></div></div><label for="partnerTaxId">Documento fiscal</label><input id="partnerTaxId" maxlength="40" placeholder="CNPJ, CUIT, RUT, RUC ou equivalente"><div class="billing-fields"><div><label for="partnerResponsible">Responsável</label><input id="partnerResponsible" maxlength="160"></div><div><label for="partnerPhone">WhatsApp</label><input id="partnerPhone" maxlength="40"></div></div><label for="partnerEmail">E-mail</label><input id="partnerEmail" type="email" maxlength="160"><label for="partnerNotes">Observações</label><textarea id="partnerNotes" rows="3" maxlength="500"></textarea><label class="checkbox"><input id="partnerActive" type="checkbox" checked> Parceiro ativo</label><p id="partnerError" class="error" role="alert"></p><div class="modal-actions"><button data-close-partner class="button secondary" type="button">Cancelar</button><button id="partnerSaveButton" class="button primary" type="button">Salvar parceiro</button></div></div></div>
   <div id="scanQrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scanQrTitle"><div class="modal-card qr-scan-modal"><div class="modal-head"><div><p class="eyebrow">LICENCIAMENTO</p><h2 id="scanQrTitle">Ler QR da instalação</h2></div><button class="icon-button" data-close-scan-qr type="button" aria-label="Fechar">×</button></div><p class="modal-description">Aponte a câmera para o QR Code exibido na tela de Licenciamento do ZentryxFit do cliente.</p><video id="scanQrVideo" autoplay playsinline muted></video><p id="scanQrError" class="error" role="alert"></p><div class="modal-actions"><button data-close-scan-qr class="button secondary" type="button">Cancelar</button></div></div></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
