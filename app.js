@@ -5,6 +5,7 @@ const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
 const environmentLabels={production:'Produção',homologation:'Homologação',development:'Desenvolvimento'};
 const countries={AR:'Argentina',BO:'Bolívia',BR:'Brasil',CL:'Chile',CO:'Colômbia',EC:'Equador',GY:'Guiana',PY:'Paraguai',PE:'Peru',SR:'Suriname',UY:'Uruguai',VE:'Venezuela'};
+const loginPhrases=['Dados em ordem, café em andamento.','Se a planilha abriu sem erro, alguém merece café.','Licença certa, cliente feliz e ninguém procurando senha no papel.','Organizar dados é cardio para quem trabalha sentado.','Aqui até o caos precisa preencher um formulário.','Um clique de cada vez; o sistema não julga o café.','Nenhum dado foi perdido. Ele só estava em uma aba diferente.','Segurança em dia e planilhas com boa postura.','Mais controle, menos “quem alterou isso?”.','Se funciona na homologação, respire fundo antes de comemorar.','A senha é secreta. O café, nem tanto.','Dados bem cuidados não pedem terapia depois.','A automação trabalha; você leva o crédito.','Evite o drama: confirme antes de clicar em excluir.','Hoje é um ótimo dia para não duplicar licenças.','A Central está de olho. Mas de um jeito educado.','Relatórios prontos: agora falta a coragem de abrir.','Nada supera uma operação organizada — talvez só uma pizza.','Café, dados e uma boa senha: o trio da produtividade.','Seu sistema está acordado. Diferente de algumas reuniões.','Menos improviso, mais indicadores bonitos.','A nuvem não esquece. Principalmente o que foi salvo.','Quando tudo está sincronizado, até segunda-feira fica mais leve.','Se der certo de primeira, registre o momento histórico.','Cada licença no lugar; cada cliente no controle.','Dados limpos deixam a consciência e o dashboard mais leves.','A planilha não morde, mas um campo obrigatório pode assustar.','Aqui o único acesso negado é o da bagunça.','A organização começa antes do botão Salvar.','Tecnologia séria, com uma pitada de bom humor.'];
 let session=null,adminProfile=null,teamMembers=[],downloads=[],installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],partners=[],partnerSchemaError='',emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview',installationQrReader=null;
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -20,6 +21,7 @@ const monthBounds=value=>{const match=/^(\d{4})-(\d{2})$/.exec(value||'');if(!ma
 const addLocalMonthsIso=months=>{const now=new Date(),day=now.getDate();now.setDate(1);now.setMonth(now.getMonth()+months);const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();now.setDate(Math.min(day,lastDay));return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);};
 const saveSession=value=>{session=value;if(value){sessionStorage.setItem(SESSION_KEY,JSON.stringify(value));sessionStorage.removeItem(LEGACY_SESSION_KEY);}else{sessionStorage.removeItem(SESSION_KEY);sessionStorage.removeItem(LEGACY_SESSION_KEY);}};
 const showToast=(message,error=false)=>{const element=$('toast');element.textContent=message;element.className=`toast${error?' error-toast':''}`;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>element.classList.add('hidden'),3500);};
+function showLoginPhrase(){const phrase=$('loginPhrase');if(phrase)phrase.textContent=loginPhrases[Math.floor(Math.random()*loginPhrases.length)];}
 
 async function refreshSession(){
   if(!session?.refresh_token)throw new Error('Sua sessão expirou. Entre novamente.');
@@ -52,7 +54,7 @@ async function login(event){
 }
 
 function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';showLoginPhrase();}
 
 async function loadDelinquentCharges(){
   const fields='id,license_id,installation_id,academy_id,billing_cycle,amount_cents,due_date,status,paid_at';
@@ -494,4 +496,5 @@ document.querySelectorAll('[data-section-target]').forEach(button=>button.addEve
 switchCentralPanel(centralPanel);
 
 $('financeMonth').value=currentMonthIso();
+showLoginPhrase();
 (async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY);if(!saved)return;session=JSON.parse(saved);saveSession(session);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
