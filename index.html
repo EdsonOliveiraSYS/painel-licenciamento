@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · ZentryxFit</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=zentryxfit-central-1.0.1">
+  <link rel="stylesheet" href="style.css?v=central-menu-2">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -36,13 +36,9 @@
       <nav class="primary-navigation" aria-label="Navegação principal">
         <button class="nav-item active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
         <button class="nav-item" type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
-        <button class="nav-item" type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
-        <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
-        <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
-        <button class="nav-item" type="button" data-scroll-target="downloadsPanelTitle"><b>⇩</b><span>Downloads</span></button>
-        <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
-        <button class="nav-item" type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
-        <button id="teamNav" class="nav-item hidden" type="button" data-scroll-target="teamPanelTitle"><b>♙</b><span>Equipe</span></button>
+        <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Financeiro</span></button>
+        <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Operação</span></button>
+        <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◇</b><span>Gestão</span></button>
       </nav>
       <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
     </aside>
@@ -53,16 +49,6 @@
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" data-central-panel="overview" aria-label="Resumo das licenças"></section>
-      <nav class="section-switcher" aria-label="Atalhos da Central">
-        <button data-section-target="metrics" type="button">Visão geral</button>
-        <button data-section-target="clientDirectoryTitle" type="button">Licenças</button>
-        <button class="active" data-section-target="updatePanelTitle" type="button">Atualizações</button>
-        <button data-section-target="downloadsPanelTitle" type="button">Downloads</button>
-        <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
-        <button data-section-target="billingTitle" type="button">Cobranças</button>
-        <button data-section-target="templatePanelTitle" type="button">Comunicação</button>
-        <button id="teamSectionNav" class="hidden" data-section-target="teamPanelTitle" type="button">Equipe</button>
-      </nav>
       <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
           <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
@@ -167,11 +153,9 @@
   <nav class="mobile-navigation" aria-label="Navegação móvel">
     <button class="active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
     <button type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
-    <button type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
-    <button type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
-    <button type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
-    <button type="button" data-scroll-target="billingTitle"><b>▤</b><span>Cobranças</span></button>
-    <button type="button" data-scroll-target="templatePanelTitle"><b>◌</b><span>Comunicação</span></button>
+    <button type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Financeiro</span></button>
+    <button type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Operação</span></button>
+    <button type="button" data-scroll-target="templatePanelTitle"><b>◇</b><span>Gestão</span></button>
   </nav>
 
   <div id="licenseModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="licenseTitle">
@@ -260,6 +244,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=eab6c48" defer></script>
+  <script src="app.js?v=central-menu-2" defer></script>
 </body>
 </html>

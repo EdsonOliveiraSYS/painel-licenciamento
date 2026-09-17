@@ -51,8 +51,8 @@ async function login(event){
   finally{$('loginButton').disabled=false;$('loginButton').textContent='Entrar com segurança';}
 }
 
-function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamNav').classList.toggle('hidden',!owner);$('teamSectionNav').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamNav').classList.add('hidden');$('teamSectionNav').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
+function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
 
 async function loadDelinquentCharges(){
   const fields='id,license_id,installation_id,academy_id,billing_cycle,amount_cents,due_date,status,paid_at';
@@ -253,7 +253,7 @@ function render(){
   const count=status=>installations.filter(item=>item.status===status).length;
   delinquencies=delinquentCharges.map(charge=>{const installation=installations.find(item=>item.id===charge.installation_id),license=(installation?.licenses||[]).find(item=>item.id===charge.license_id);return {charge,license,installation,academy:installation?.academies||{}};}).filter(item=>item.installation);
   const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.charge.amount_cents||0),0);
-  $('metrics').innerHTML=[['Total',installations.length],['Em teste',count('trial')],['Ativas',count('active')],['Vencidas',count('expired')],['Bloqueadas',count('blocked')+count('tampered')],['Em atraso',formatMoneyCents(overdueTotal)]].map(([label,total])=>`<article class="metric"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  $('metrics').innerHTML=[['Total',installations.length,'neutral'],['Em teste',count('trial'),'trial'],['Ativas',count('active'),'active'],['Vencidas',count('expired'),'expired'],['Bloqueadas',count('blocked')+count('tampered'),'blocked'],['Em atraso',formatMoneyCents(overdueTotal),'overdue']].map(([label,total,tone])=>`<article class="metric metric-${tone}"><span>${label}</span><strong>${total}</strong></article>`).join('');
   renderUpdateCenter();
   renderFinancialSummary();
   renderPartnerOptions();
@@ -464,13 +464,14 @@ $('financeRecent').addEventListener('click',event=>{const edit=event.target.clos
 $('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 $('scanInstallationQr').addEventListener('click',openInstallationQrScanner);document.querySelectorAll('[data-close-scan-qr]').forEach(button=>button.addEventListener('click',closeInstallationQrScanner));
 
-const panelForTarget={metrics:'overview',installationList:'licenses',billingTitle:'billing',templatePanelTitle:'communication',updatePanelTitle:'updates',downloadsPanelTitle:'downloads',financeOverviewTitle:'revenue',partnersTitle:'partners',teamPanelTitle:'team'};
+const panelForTarget={metrics:'overview',installationList:'licenses',financeOverviewTitle:'finance',updatePanelTitle:'operation',templatePanelTitle:'management'};
+const panelGroups={overview:['overview'],licenses:['licenses'],finance:['revenue','billing'],operation:['updates','downloads'],management:['communication','partners','team']};
 function switchCentralPanel(panel){
   centralPanel=panel;
-  document.querySelectorAll('[data-central-panel]').forEach(item=>item.classList.toggle('central-hidden',item.dataset.centralPanel!==panel));
+  const visiblePanels=panelGroups[panel]||panelGroups.overview;
+  document.querySelectorAll('[data-central-panel]').forEach(item=>item.classList.toggle('central-hidden',!visiblePanels.includes(item.dataset.centralPanel)));
   document.querySelectorAll('.nav-item,.mobile-navigation button').forEach(item=>item.classList.toggle('active',panelForTarget[item.dataset.scrollTarget]===panel));
-  document.querySelectorAll('[data-section-target]').forEach(item=>item.classList.toggle('active',panelForTarget[item.dataset.sectionTarget]===panel));
-  const orientation={overview:['Visão geral','Acompanhe a operação da Central.'],licenses:['Academias','Encontre instalações e emita licenças.'],billing:['Cobranças','Revise atrasos e confirme pagamentos.'],communication:['Comunicação','Gerencie mensagens e envios.'],updates:['Atualizações','Publique e acompanhe versões.'],revenue:['Receitas','Leia o resultado financeiro do período.'],partners:['Parceiros','Organize canais e revendas.'],team:['Equipe','Administre quem pode usar a Central.']}[panel]||['Central','Gerencie a operação com segurança.'];
+  const orientation={overview:['Visão geral','Acompanhe a operação da Central.'],licenses:['Academias','Encontre instalações e emita licenças.'],finance:['Financeiro','Receitas, cobranças e inadimplências em um só lugar.'],operation:['Operação','Atualizações e downloads oficiais do sistema.'],management:['Gestão','Parceiros, comunicação e equipe de licenciamento.']}[panel]||['Central','Gerencie a operação com segurança.'];
   $('navigationHint').innerHTML=`<b>${orientation[0]}</b><span>${orientation[1]}</span>`;
   window.scrollTo({top:0,behavior:'smooth'});
 }
