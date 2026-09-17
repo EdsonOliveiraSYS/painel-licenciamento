@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://czdvttwkhpfeyekqcbcy.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
-const SESSION_KEY='fitnexus-license-session';
+const SESSION_KEY='zentryxfit-license-session',LEGACY_SESSION_KEY='fitnexus-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
 let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],partners=[],partnerSchemaError='',emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview',installationQrReader=null;
@@ -13,7 +13,7 @@ const todayIso=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;re
 const currentMonthIso=()=>todayIso().slice(0,7);
 const monthBounds=value=>{const match=/^(\d{4})-(\d{2})$/.exec(value||'');if(!match)return null;const year=Number(match[1]),month=Number(match[2]);if(month<1||month>12)return null;const start=`${year}-${String(month).padStart(2,'0')}-01`,next=new Date(Date.UTC(year,month,1)),end=next.toISOString().slice(0,10);return {start,end,startTime:`${start}T00:00:00.000Z`,endTime:`${end}T00:00:00.000Z`};};
 const addLocalMonthsIso=months=>{const now=new Date(),day=now.getDate();now.setDate(1);now.setMonth(now.getMonth()+months);const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();now.setDate(Math.min(day,lastDay));return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);};
-const saveSession=value=>{session=value;if(value)sessionStorage.setItem(SESSION_KEY,JSON.stringify(value));else sessionStorage.removeItem(SESSION_KEY);};
+const saveSession=value=>{session=value;if(value){sessionStorage.setItem(SESSION_KEY,JSON.stringify(value));sessionStorage.removeItem(LEGACY_SESSION_KEY);}else{sessionStorage.removeItem(SESSION_KEY);sessionStorage.removeItem(LEGACY_SESSION_KEY);}};
 const showToast=(message,error=false)=>{const element=$('toast');element.textContent=message;element.className=`toast${error?' error-toast':''}`;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>element.classList.add('hidden'),3500);};
 
 async function refreshSession(){
@@ -33,7 +33,7 @@ async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
 async function ensureAdmin(){
   if(!session?.user?.id)throw new Error('Sessão administrativa ausente.');
   const rows=await api(`/rest/v1/license_admins?select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}`);
-  if(!rows?.length)throw new Error('Esta conta não está autorizada na Central FitNexus.');
+  if(!rows?.length)throw new Error('Esta conta não está autorizada na Central ZentryxFit.');
 }
 
 async function login(event){
@@ -106,7 +106,7 @@ async function loadPartners(renderAfter=true){
   if(renderAfter){renderPartnerOptions();renderPartners();}
 }
 function partnerName(id){return partners.find(item=>item.id===id)?.name||'Cliente direto';}
-function partnerOptions(selectedId=''){return `<option value="">Cliente direto FitNexus</option>${partners.filter(item=>item.active||item.id===selectedId).map(item=>`<option value="${escapeHtml(item.id)}" ${item.id===selectedId?'selected':''}>${escapeHtml(item.name)}${item.active?'':' (inativo)'}</option>`).join('')}`;}
+function partnerOptions(selectedId=''){return `<option value="">Cliente direto ZentryxFit</option>${partners.filter(item=>item.active||item.id===selectedId).map(item=>`<option value="${escapeHtml(item.id)}" ${item.id===selectedId?'selected':''}>${escapeHtml(item.name)}${item.active?'':' (inativo)'}</option>`).join('')}`;}
 function renderPartnerOptions(){['licensePartner','billingPartner'].forEach(id=>{const field=$(id);if(!field)return;const current=field.value;field.innerHTML=partnerOptions(current);field.value=current;});const filter=$('financePartnerFilter');if(filter){const current=filter.value;filter.innerHTML=`<option value="">Todos os clientes</option><option value="direct">Clientes diretos</option>${partners.filter(item=>item.active).map(item=>`<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;filter.value=current;}}
 function renderPartners(){
   const target=$('partnersList');if(!target)return;
@@ -445,7 +445,7 @@ async function savePartner(){
   const body={name,cnpj:$('partnerCnpj').value.replace(/\D/g,'').slice(0,14)||null,default_amount_cents:Math.round(amount*100),responsible_name:$('partnerResponsible').value.trim()||null,phone:$('partnerPhone').value.trim()||null,email:$('partnerEmail').value.trim().toLowerCase()||null,notes:$('partnerNotes').value.trim()||null,active:$('partnerActive').checked,updated_at:new Date().toISOString()},button=$('partnerSaveButton');button.disabled=true;
   try{const id=$('partnerId').value;if(id)await api(`/rest/v1/license_partners?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body});else await api('/rest/v1/license_partners',{method:'POST',body});closePartnerModal();showToast('Parceiro salvo.');await loadInstallations();}catch(error){$('partnerError').textContent=error.message;}finally{button.disabled=false;}
 }
-function decodeInstallationQr(value){const payload=String(value||'').trim();if(!payload.startsWith('FITNEXUS:INSTALL:'))throw new Error('Este não é um QR Code de instalação FitNexus.');const serial=payload.slice('FITNEXUS:INSTALL:'.length);const normalized=serial.replace(/-/g,'+').replace(/_/g,'/');const decoded=decodeURIComponent(Array.prototype.map.call(atob(normalized+'='.repeat((4-normalized.length%4)%4)),char=>`%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`).join(''));const [installationId]=decoded.split('|');if(!/^[0-9a-f-]{36}$/i.test(installationId))throw new Error('QR Code de instalação inválido.');return installationId;}
+function decodeInstallationQr(value){const payload=String(value||'').trim();if(!payload.startsWith('FITNEXUS:INSTALL:'))throw new Error('Este não é um QR Code de instalação ZentryxFit.');const serial=payload.slice('FITNEXUS:INSTALL:'.length);const normalized=serial.replace(/-/g,'+').replace(/_/g,'/');const decoded=decodeURIComponent(Array.prototype.map.call(atob(normalized+'='.repeat((4-normalized.length%4)%4)),char=>`%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`).join(''));const [installationId]=decoded.split('|');if(!/^[0-9a-f-]{36}$/i.test(installationId))throw new Error('QR Code de instalação inválido.');return installationId;}
 async function openInstallationQrScanner(){if(!window.ZXing){showToast('Leitor de QR ainda está carregando. Tente novamente.',true);return;}$('scanQrError').textContent='';$('scanQrModal').classList.remove('hidden');try{installationQrReader=new ZXing.BrowserQRCodeReader();await installationQrReader.decodeFromVideoDevice(null,$('scanQrVideo'),result=>{if(!result)return;try{const installationId=decodeInstallationQr(result.getText());const item=installations.find(row=>row.installation_id===installationId);if(!item)throw new Error('Instalação ainda não apareceu na Central. No computador do cliente, clique em “Verificar novamente” e tente de novo.');closeInstallationQrScanner();openLicense(item.id);}catch(error){$('scanQrError').textContent=error.message;}});}catch(error){$('scanQrError').textContent=`Não foi possível abrir a câmera: ${error.message}`;}}
 function closeInstallationQrScanner(){try{installationQrReader?.reset();}catch(_){}installationQrReader=null;const video=$('scanQrVideo');if(video?.srcObject)video.srcObject.getTracks().forEach(track=>track.stop());if(video)video.srcObject=null;$('scanQrModal').classList.add('hidden');}
 function renderLicenseQrCode(token){const target=$('licenseQrCode');if(!target)return;target.innerHTML='';if(!window.QRCode){target.textContent='QR Code indisponível. Use a chave abaixo.';return;}new QRCode(target,{text:token,width:196,height:196,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.L});}
@@ -454,4 +454,4 @@ document.querySelectorAll('[data-section-target]').forEach(button=>button.addEve
 switchCentralPanel(centralPanel);
 
 $('financeMonth').value=currentMonthIso();
-(async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY);if(!saved)return;session=JSON.parse(saved);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
+(async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY);if(!saved)return;session=JSON.parse(saved);saveSession(session);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();

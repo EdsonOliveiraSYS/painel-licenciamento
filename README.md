@@ -1,4 +1,4 @@
-# Central de Licenças FitNexus
+# Central de Licenças ZentryxFit
 
 Painel web responsivo, com prioridade para celular, publicado no GitHub Pages. A autenticação, autorização, dados e emissão de licenças permanecem no Supabase.
 

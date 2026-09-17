@@ -4,17 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
-  <meta name="description" content="Central privada de licenciamento FitNexus">
+  <meta name="description" content="Central privada de licenciamento ZentryxFit">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
-  <title>Central de Licenças · FitNexus</title>
+  <title>Central de Licenças · ZentryxFit</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=fitnexus-central-2.1.0">
+  <link rel="stylesheet" href="style.css?v=zentryxfit-central-1.0.0">
 </head>
 <body>
   <section id="loginView" class="login-view">
     <main class="login-card">
-      <div class="brand-mark" aria-hidden="true">FN</div>
-      <p class="eyebrow">FITNEXUS</p>
+      <div class="brand-mark" aria-hidden="true"><img src="assets/zentryxfit.svg" alt=""></div>
+      <p class="eyebrow">ZENTRYXFIT</p>
       <h1>Central de Licenças</h1>
       <p class="lead">Acesso administrativo protegido para gerenciar academias e ativações.</p>
       <form id="loginForm">
@@ -31,7 +31,7 @@
 
   <section id="appView" class="app-view hidden">
     <aside class="sidebar">
-      <div class="sidebar-brand"><div class="brand-mark small">FN</div><div><strong>FitNexus</strong><span>Central de licenças</span></div></div>
+      <div class="sidebar-brand"><div class="brand-mark small"><img src="assets/zentryxfit.svg" alt=""></div><div><strong>ZentryxFit</strong><span>Central de licenças</span></div></div>
       <nav class="primary-navigation" aria-label="Navegação principal">
         <button class="nav-item active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
         <button class="nav-item" type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
@@ -45,7 +45,7 @@
     </aside>
     <main class="content">
       <header class="topbar">
-        <div><p class="eyebrow">CENTRAL FITNEXUS</p><h1>Licenças e instalações</h1><p>Ative, renove, cobre e acompanhe suas academias.</p></div>
+        <div><p class="eyebrow">CENTRAL ZENTRYXFIT</p><h1>Licenças e instalações</h1><p>Ative, renove, cobre e acompanhe suas academias.</p></div>
         <div class="topbar-actions"><button id="scanInstallationQr" class="button secondary" type="button">⌗ <span>Licenciar por QR</span></button><button id="refreshButton" class="button secondary" type="button">↻ <span>Atualizar</span></button><div class="operator-chip"><span class="operator-avatar">AD</span><span><b>Administrador</b><small>Conta protegida</small></span></div></div>
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
@@ -150,7 +150,7 @@
       <p id="licenseAcademy" class="modal-description"></p>
       <label for="licenseBillingCycle">Plano da licença</label>
       <select id="licenseBillingCycle"><option value="monthly">Mensalidade</option><option value="quarterly">Trimestral</option><option value="annual">Anuidade</option><option value="custom">Prazo personalizado</option><option value="perpetual">Sem vencimento</option></select>
-      <label for="licensePartner">Origem da academia</label><select id="licensePartner"><option value="">Cliente direto FitNexus</option></select>
+      <label for="licensePartner">Origem da academia</label><select id="licensePartner"><option value="">Cliente direto ZentryxFit</option></select>
       <div id="licenseCustomDays" class="hidden"><label for="licenseDays">Validade em dias</label><input id="licenseDays" type="number" min="1" max="3650" value="365"></div>
       <div class="billing-fields">
         <div><label for="licenseAmount">Valor da licença (R$)</label><input id="licenseAmount" type="number" min="0" max="10000000" step="0.01" value="0.00"></div>
@@ -223,11 +223,11 @@
     </div>
   </div>
   <div id="partnerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="partnerModalTitle"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">PARCEIRO COMERCIAL</p><h2 id="partnerModalTitle">Novo parceiro</h2></div><button class="icon-button" data-close-partner type="button" aria-label="Fechar">×</button></div><input id="partnerId" type="hidden"><label for="partnerName">Nome da empresa</label><input id="partnerName" type="text" maxlength="160" required><div class="billing-fields"><div><label for="partnerCnpj">CNPJ</label><input id="partnerCnpj" inputmode="numeric" maxlength="18"></div><div><label for="partnerDefaultAmount">Valor padrão por academia (R$)</label><input id="partnerDefaultAmount" type="number" min="0" step="0.01" value="70.00"></div></div><div class="billing-fields"><div><label for="partnerResponsible">Responsável</label><input id="partnerResponsible" maxlength="160"></div><div><label for="partnerPhone">WhatsApp</label><input id="partnerPhone" maxlength="40"></div></div><label for="partnerEmail">E-mail</label><input id="partnerEmail" type="email" maxlength="160"><label for="partnerNotes">Observações</label><textarea id="partnerNotes" rows="3" maxlength="500"></textarea><label class="checkbox"><input id="partnerActive" type="checkbox" checked> Parceiro ativo</label><p id="partnerError" class="error" role="alert"></p><div class="modal-actions"><button data-close-partner class="button secondary" type="button">Cancelar</button><button id="partnerSaveButton" class="button primary" type="button">Salvar parceiro</button></div></div></div>
-  <div id="scanQrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scanQrTitle"><div class="modal-card qr-scan-modal"><div class="modal-head"><div><p class="eyebrow">LICENCIAMENTO</p><h2 id="scanQrTitle">Ler QR da instalação</h2></div><button class="icon-button" data-close-scan-qr type="button" aria-label="Fechar">×</button></div><p class="modal-description">Aponte a câmera para o QR Code exibido na tela de Licenciamento do FitNexus do cliente.</p><video id="scanQrVideo" autoplay playsinline muted></video><p id="scanQrError" class="error" role="alert"></p><div class="modal-actions"><button data-close-scan-qr class="button secondary" type="button">Cancelar</button></div></div></div>
+  <div id="scanQrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="scanQrTitle"><div class="modal-card qr-scan-modal"><div class="modal-head"><div><p class="eyebrow">LICENCIAMENTO</p><h2 id="scanQrTitle">Ler QR da instalação</h2></div><button class="icon-button" data-close-scan-qr type="button" aria-label="Fechar">×</button></div><p class="modal-description">Aponte a câmera para o QR Code exibido na tela de Licenciamento do ZentryxFit do cliente.</p><video id="scanQrVideo" autoplay playsinline muted></video><p id="scanQrError" class="error" role="alert"></p><div class="modal-actions"><button data-close-scan-qr class="button secondary" type="button">Cancelar</button></div></div></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=fitnexus-central-2.1.0" defer></script>
+  <script src="app.js?v=zentryxfit-central-1.0.0" defer></script>
 </body>
 </html>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="ZentryxFit">
+  <rect width="512" height="512" rx="110" fill="#000000"/>
+  <g fill="#ff2d45">
+    <rect x="112" y="220" width="288" height="72" rx="24"/>
+    <rect x="64" y="176" width="56" height="160" rx="20"/>
+    <rect x="392" y="176" width="56" height="160" rx="20"/>
+    <rect x="32" y="208" width="32" height="96" rx="12"/>
+    <rect x="448" y="208" width="32" height="96" rx="12"/>
+  </g>
+</svg>
