@@ -50,7 +50,7 @@ async function login(event){
     const data=await api('/auth/v1/token?grant_type=password',{method:'POST',auth:false,body:{email:$('email').value.trim(),password:$('password').value}});
     saveSession(data);await ensureAdmin();openDashboard();await loadInstallations();
   }catch(error){saveSession(null);$('loginError').textContent=error.message;}
-  finally{$('loginButton').disabled=false;$('loginButton').textContent='Entrar com segurança';}
+  finally{$('loginButton').disabled=false;$('loginButton').textContent='Entrar';}
 }
 
 function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
