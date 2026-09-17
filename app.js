@@ -3,7 +3,7 @@ const PUBLISHABLE_KEY='sb_publishable_Jm7xS7B1a3-jODa67HU9Jg_g_YLd4WJ';
 const SESSION_KEY='zentryxfit-license-session',LEGACY_SESSION_KEY='fitnexus-license-session';
 const $=id=>document.getElementById(id);
 const labels={trial:'Em teste',active:'Ativa',expired:'Vencida',blocked:'Bloqueada',inactive:'Inativa',tampered:'Alerta'};
-let session=null,installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],partners=[],partnerSchemaError='',emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview',installationQrReader=null;
+let session=null,adminProfile=null,teamMembers=[],installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],partners=[],partnerSchemaError='',emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview',installationQrReader=null;
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -32,8 +32,9 @@ async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
 
 async function ensureAdmin(){
   if(!session?.user?.id)throw new Error('Sessão administrativa ausente.');
-  const rows=await api(`/rest/v1/license_admins?select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}`);
-  if(!rows?.length)throw new Error('Esta conta não está autorizada na Central ZentryxFit.');
+  const rows=await api(`/rest/v1/license_admins?select=user_id,email,full_name,role,active&user_id=eq.${encodeURIComponent(session.user.id)}`),membership=rows?.[0];
+  if(!membership?.active)throw new Error('Esta conta não está autorizada na Central ZentryxFit.');
+  adminProfile=membership;
 }
 
 async function login(event){
@@ -45,8 +46,8 @@ async function login(event){
   finally{$('loginButton').disabled=false;$('loginButton').textContent='Entrar com segurança';}
 }
 
-function openDashboard(){$('accountEmail').textContent=session.user?.email||'';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
+function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamNav').classList.toggle('hidden',!owner);$('teamSectionNav').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
+function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamNav').classList.add('hidden');$('teamSectionNav').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';}
 
 async function loadDelinquentCharges(){
   const fields='id,license_id,installation_id,academy_id,billing_cycle,amount_cents,due_date,status,paid_at';
@@ -198,6 +199,29 @@ async function toggleClientAutomaticUpdate(id,enabled){
   try{await api(`/rest/v1/installations?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:{update_auto_enabled:!enabled}});showToast(`Atualização automática ${!enabled?'ativada':'desativada'} para este cliente.`);await loadInstallations();}catch(error){showToast(error.message,true);}
 }
 
+async function teamApi(action,payload={}){return api('/functions/v1/license-admin-manage',{method:'POST',body:{action,...payload}});}
+function renderTeam(){
+  const target=$('teamList');if(!target)return;
+  const active=teamMembers.filter(member=>member.active).length;$('teamCount').textContent=`${active} ativo${active===1?'':'s'}`;
+  if(!teamMembers.length){target.innerHTML='<div class="empty">Nenhum acesso cadastrado.</div>';return;}
+  target.innerHTML=teamMembers.map(member=>{const self=member.user_id===session?.user?.id,name=member.full_name||member.email||'Sem nome',role=member.role==='owner'?'Proprietário':'Operador';return `<article class="team-member ${member.active?'':'blocked'}"><div class="team-member-avatar">${escapeHtml(name.slice(0,1).toUpperCase())}</div><div class="team-member-data"><strong>${escapeHtml(name)}${self?' <small>(você)</small>':''}</strong><span>${escapeHtml(member.email||'E-mail não informado')}</span><small>Desde ${formatDate(member.created_at)}</small></div><div class="team-member-state"><span class="badge ${member.active?'active':'blocked'}">${member.active?'Ativo':'Bloqueado'}</span><span class="team-role">${role}</span></div><div class="team-member-actions">${!self?`<button class="button secondary compact" data-team-role="${escapeHtml(member.user_id)}" data-role="${member.role==='owner'?'operator':'owner'}" type="button">${member.role==='owner'?'Tornar operador':'Tornar proprietário'}</button><button class="button secondary compact ${member.active?'danger':''}" data-team-active="${escapeHtml(member.user_id)}" data-active="${member.active?'false':'true'}" type="button">${member.active?'Bloquear':'Liberar'}</button>`:'<span class="team-self-note">Sua conta</span>'}</div></article>`;}).join('');
+}
+async function loadTeam(){
+  if(adminProfile?.role!=='owner')return;
+  try{const data=await teamApi('list');teamMembers=data.admins||[];renderTeam();}catch(error){$('teamList').innerHTML=`<div class="empty error">${escapeHtml(error.message)}</div>`;}
+}
+async function inviteTeamMember(event){
+  event.preventDefault();const button=$('teamInviteButton'),name=$('teamInviteName').value.trim(),email=$('teamInviteEmail').value.trim();$('teamInviteError').textContent='';button.disabled=true;
+  try{await teamApi('invite',{fullName:name,email});event.target.reset();showToast('Convite enviado por e-mail.');await loadTeam();}
+  catch(error){$('teamInviteError').textContent=error.message;}finally{button.disabled=false;}
+}
+async function updateTeamMember(userId,changes){
+  const member=teamMembers.find(item=>item.user_id===userId);if(!member)return;
+  const description=changes.active===false?`Bloquear o acesso de ${member.full_name||member.email}? A pessoa não conseguirá mais usar a Central.`:changes.active===true?`Liberar o acesso de ${member.full_name||member.email}?`:`Alterar o perfil de ${member.full_name||member.email}?`;
+  if(!confirm(description))return;
+  try{await teamApi('update',{userId,...changes});showToast('Acesso da equipe atualizado.');await loadTeam();}catch(error){showToast(error.message,true);}
+}
+
 async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
@@ -209,7 +233,7 @@ async function loadInstallations(){
       const legacy=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,academy_id,update_channel,update_auto_enabled,update_status,update_target_version,update_checked_at,update_downloaded_at,update_error,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
       installations=await api(`/rest/v1/installations?select=${legacy}&order=last_seen_at.desc`)||[];
     }
-    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases(),loadPartners(false)]);}catch(error){financialCharges=[];delinquentCharges=[];appReleases=[];partners=[];$('financeCaption').textContent=`Não foi possível carregar parte da Central: ${error.message}`;}
+    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases(),loadPartners(false),loadTeam()]);}catch(error){financialCharges=[];delinquentCharges=[];appReleases=[];partners=[];$('financeCaption').textContent=`Não foi possível carregar parte da Central: ${error.message}`;}
     try{await loadMessageTemplates(false);}catch(error){messageTemplates=[];$('templateSummary').innerHTML=`<div class="finance-empty">${escapeHtml(error.message)}</div>`;}
     try{await loadEmailIntegration(false);}catch(error){emailProviderConfigured=false;emailDeliveries=[];$('emailProviderStatus').innerHTML=`<span class="status-dot off"></span><div><strong>Integração de e-mail indisponível</strong><small>${escapeHtml(error.message)}</small></div>`;}
     render();
@@ -416,6 +440,8 @@ $('partnersList').addEventListener('click',event=>{const edit=event.target.close
 document.querySelectorAll('[data-close-partner]').forEach(button=>button.addEventListener('click',closePartnerModal));
 $('partnerSaveButton').addEventListener('click',savePartner);
 $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomation);
+$('teamInviteForm').addEventListener('submit',inviteTeamMember);
+$('teamList').addEventListener('click',event=>{const role=event.target.closest('[data-team-role]'),active=event.target.closest('[data-team-active]');if(role)updateTeamMember(role.dataset.teamRole,{role:role.dataset.role});if(active)updateTeamMember(active.dataset.teamActive,{active:active.dataset.active==='true'});});
 $('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(true));
 $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
 $('updatePublisher').addEventListener('submit',publishUpdate);
@@ -427,7 +453,7 @@ $('financeRecent').addEventListener('click',event=>{const edit=event.target.clos
 $('clientTabs').addEventListener('click',event=>{const button=event.target.closest('[data-client-view]');if(!button)return;clientView=button.dataset.clientView;document.querySelectorAll('[data-client-view]').forEach(item=>{const active=item===button;item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});render();});
 $('scanInstallationQr').addEventListener('click',openInstallationQrScanner);document.querySelectorAll('[data-close-scan-qr]').forEach(button=>button.addEventListener('click',closeInstallationQrScanner));
 
-const panelForTarget={metrics:'overview',installationList:'licenses',billingTitle:'billing',templatePanelTitle:'communication',updatePanelTitle:'updates',financeOverviewTitle:'revenue',partnersTitle:'partners'};
+const panelForTarget={metrics:'overview',installationList:'licenses',billingTitle:'billing',templatePanelTitle:'communication',updatePanelTitle:'updates',financeOverviewTitle:'revenue',partnersTitle:'partners',teamPanelTitle:'team'};
 function switchCentralPanel(panel){
   centralPanel=panel;
   document.querySelectorAll('[data-central-panel]').forEach(item=>item.classList.toggle('central-hidden',item.dataset.centralPanel!==panel));

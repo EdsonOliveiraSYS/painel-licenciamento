@@ -40,6 +40,7 @@
         <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Atualizações</span></button>
         <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Receitas</span></button>
         <button class="nav-item" type="button" data-scroll-target="partnersTitle"><b>◇</b><span>Parceiros</span></button>
+        <button id="teamNav" class="nav-item hidden" type="button" data-scroll-target="teamPanelTitle"><b>♙</b><span>Equipe</span></button>
       </nav>
       <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
     </aside>
@@ -57,6 +58,7 @@
         <button data-section-target="financeOverviewTitle" type="button">Receitas</button>
         <button data-section-target="billingTitle" type="button">Cobranças</button>
         <button data-section-target="templatePanelTitle" type="button">Comunicação</button>
+        <button id="teamSectionNav" class="hidden" data-section-target="teamPanelTitle" type="button">Equipe</button>
       </nav>
       <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
@@ -98,6 +100,25 @@
         <div id="templateSummary" class="template-summary"></div>
         <div class="delivery-head"><strong>Últimos e-mails</strong><span>Registro das tentativas realizadas pela Central</span></div>
         <div id="emailDeliveryHistory" class="email-delivery-history"></div>
+      </section>
+      <section id="teamPanel" class="team-panel" data-central-panel="team" aria-labelledby="teamPanelTitle">
+        <div class="team-panel-head">
+          <div><p class="eyebrow">ACESSO ADMINISTRATIVO</p><h2 id="teamPanelTitle">Equipe de licenciamento</h2><p>Convide operadores para ativar, renovar e acompanhar academias. Somente proprietários podem administrar esta equipe.</p></div>
+        </div>
+        <div class="team-grid">
+          <form id="teamInviteForm" class="team-invite-card">
+            <h3>Convidar operador</h3>
+            <p>O convite é enviado por e-mail. A pessoa definirá a própria senha e entrará como <strong>operador</strong>.</p>
+            <label for="teamInviteName">Nome completo</label><input id="teamInviteName" type="text" maxlength="120" autocomplete="name" required>
+            <label for="teamInviteEmail">E-mail de trabalho</label><input id="teamInviteEmail" type="email" maxlength="160" autocomplete="email" required>
+            <p id="teamInviteError" class="error" role="alert" aria-live="polite"></p>
+            <button id="teamInviteButton" class="button primary" type="submit">Enviar convite</button>
+          </form>
+          <section class="team-list-card" aria-labelledby="teamListTitle">
+            <div class="section-card-head"><div><h3 id="teamListTitle">Acessos cadastrados</h3><p>Bloqueie, libere ou promova uma pessoa quando necessário.</p></div><span id="teamCount" class="client-directory-count"></span></div>
+            <div id="teamList" class="team-list" aria-live="polite"></div>
+          </section>
+        </div>
       </section>
       <section class="toolbar" data-central-panel="licenses" aria-label="Filtros">
         <input id="search" type="search" placeholder="Buscar academia, CNPJ ou instalação">
