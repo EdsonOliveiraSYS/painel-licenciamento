@@ -256,6 +256,7 @@ function render(){
   delinquencies=delinquentCharges.map(charge=>{const installation=installations.find(item=>item.id===charge.installation_id),license=(installation?.licenses||[]).find(item=>item.id===charge.license_id);return {charge,license,installation,academy:installation?.academies||{}};}).filter(item=>item.installation);
   const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.charge.amount_cents||0),0);
   $('metrics').innerHTML=[['Total',installations.length,'neutral'],['Em teste',count('trial'),'trial'],['Ativas',count('active'),'active'],['Vencidas',count('expired'),'expired'],['Bloqueadas',count('blocked')+count('tampered'),'blocked'],['Em atraso',formatMoneyCents(overdueTotal),'overdue']].map(([label,total,tone])=>`<article class="metric metric-${tone}"><span>${label}</span><strong>${total}</strong></article>`).join('');
+  renderOverviewInsights();
   renderUpdateCenter();
   renderFinancialSummary();
   renderPartnerOptions();
@@ -280,6 +281,23 @@ function render(){
     const environment=item.environment||'production';
     return `<article class="installation"><div><h3>${escapeHtml(academy.name||'Academia em configuração')}</h3><span class="badge ${item.status}">${labels[item.status]||item.status}</span><span class="badge environment ${escapeHtml(environment)}">${escapeHtml(environmentLabels[environment]||'Produção')}</span><div class="muted">Documento fiscal: ${escapeHtml(fiscalId(academy)||'não informado')} · ${escapeHtml(countryName(academy.country_code))}</div></div><div class="facts"><div><strong>Instalação:</strong> ${formatDate(item.installed_at)}</div><div><strong>Último contato:</strong> ${formatDate(item.last_seen_at)}</div><div><strong>Versão:</strong> ${escapeHtml(item.app_version||'—')}</div></div><div class="facts"><div><strong>Plano:</strong> ${cycleLabel}</div><div><strong>Origem:</strong> ${activeLicense?.partner_id?escapeHtml(partnerName(activeLicense.partner_id)):'Direta'}</div><div><strong>Licença até:</strong> ${formatDate(activeLicense?.expires_at)}</div></div><div class="actions"><button class="button primary" data-issue="${item.id}" type="button">Licenciar</button>${activeLicense?`<button class="button secondary" data-billing="${item.id}" type="button">Editar licença</button><button class="button secondary danger" data-license-delete="${activeLicense.id}" type="button">Excluir licença</button>`:''}<button class="button secondary" data-status="${blocked?'trial':'blocked'}" data-id="${item.id}" type="button">${blocked?'Desbloquear':'Bloquear'}</button><button class="button secondary" data-status="inactive" data-id="${item.id}" type="button">Inativar</button>${canDeleteInstallation?`<button class="button secondary danger" data-installation-delete="${item.id}" type="button">Excluir instalação</button>`:''}</div></article>`;
   }).join('');
+}
+
+function renderOverviewInsights(){
+  const bounds=monthBounds($('financeMonth').value)||monthBounds(currentMonthIso());
+  const due=financialCharges.filter(charge=>charge.due_date>=bounds.start&&charge.due_date<bounds.end&&!['cancelled','waived'].includes(charge.status));
+  const received=financialCharges.filter(charge=>charge.paid_at&&charge.paid_at>=bounds.startTime&&charge.paid_at<bounds.endTime).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const open=due.filter(charge=>['pending','overdue'].includes(charge.status)).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const overdue=due.filter(charge=>charge.status==='overdue'||(charge.status==='pending'&&charge.due_date<todayIso())).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const upcoming=financialCharges.filter(charge=>charge.status==='pending'&&charge.due_date>=todayIso()).sort((a,b)=>a.due_date.localeCompare(b.due_date))[0];
+  const review=installations.filter(item=>['expired','blocked','tampered'].includes(item.status)).length;
+  const items=[
+    ['Recebido no mês',formatMoneyCents(received),'Pagamentos efetivamente confirmados','positive'],
+    ['Em aberto',formatMoneyCents(open),overdue?`${formatMoneyCents(overdue)} já venceu`:'Nenhuma cobrança vencida','attention'],
+    ['Próximo vencimento',upcoming?formatDateOnly(upcoming.due_date):'Sem pendências',upcoming?formatMoneyCents(upcoming.amount_cents):'Nenhuma cobrança futura','neutral'],
+    ['Licenças para revisar',String(review),review?'Vencidas, bloqueadas ou com alerta':'Tudo em situação regular','critical']
+  ];
+  $('overviewInsightsGrid').innerHTML=items.map(([label,value,detail,tone])=>`<article class="overview-insight ${tone}"><span>${label}</span><strong>${value}</strong><small>${detail}</small></article>`).join('');
 }
 
 function renderFinancialSummary(){

@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · ZentryxFit</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=central-login-glass-1">
+  <link rel="stylesheet" href="style.css?v=central-overview-1">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -55,6 +55,13 @@
       </header>
       <div class="secure-strip"><span>●</span> Assinatura remota protegida e vinculada à sua conta administrativa</div>
       <section id="metrics" class="metrics" data-central-panel="overview" aria-label="Resumo das licenças"></section>
+      <section class="overview-insights" data-central-panel="overview" aria-labelledby="overviewInsightsTitle">
+        <div class="overview-insights-head">
+          <div><p class="eyebrow">LEITURA RÁPIDA</p><h2 id="overviewInsightsTitle">Financeiro e operação</h2><p>O que merece atenção na Central agora.</p></div>
+          <button class="button secondary" type="button" data-scroll-target="financeOverviewTitle">Ver financeiro</button>
+        </div>
+        <div id="overviewInsightsGrid" class="overview-insights-grid" aria-live="polite"></div>
+      </section>
       <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
           <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
@@ -250,6 +257,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=central-login-glass-1" defer></script>
+  <script src="app.js?v=central-overview-1" defer></script>
 </body>
 </html>
