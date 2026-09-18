@@ -58,8 +58,8 @@
       <nav class="primary-navigation" aria-label="Navegação principal">
         <button class="nav-item active" type="button" data-scroll-target="metrics"><b>▦</b><span>Visão geral</span></button>
         <button class="nav-item" type="button" data-scroll-target="installationList"><b>⌂</b><span>Academias</span></button>
-        <button class="nav-item" type="button" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Financeiro</span></button>
-        <button class="nav-item" type="button" data-scroll-target="updatePanelTitle"><b>↥</b><span>Operação</span></button>
+        <button class="nav-item" type="button" data-permission="finance" data-scroll-target="financeOverviewTitle"><b>◉</b><span>Financeiro</span></button>
+        <button class="nav-item" type="button" data-permission="operations" data-scroll-target="updatePanelTitle"><b>↥</b><span>Operação</span></button>
         <button class="nav-item" type="button" data-scroll-target="templatePanelTitle"><b>◇</b><span>Gestão</span></button>
       </nav>
       <div class="sidebar-account"><span id="accountEmail"></span><button id="logoutButton" class="text-button" type="button">Sair</button></div>
@@ -82,7 +82,7 @@
         <div class="overview-charts-head"><div><p class="eyebrow">PAINEL VISUAL</p><h2 id="overviewChartsTitle">Indicadores da Central</h2><p>Distribuição das licenças e leitura financeira do período selecionado.</p></div></div>
         <div id="overviewChartsGrid" class="overview-charts-grid" aria-live="polite"></div>
       </section>
-      <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
+      <section class="update-panel" data-central-panel="updates" data-permission="operations" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
           <div><p class="eyebrow">VERSÕES DO SISTEMA</p><h2 id="updatePanelTitle">Atualizações dos clientes</h2><p>Publique o instalador e acompanhe quais academias ainda precisam atualizar.</p></div>
           <button id="toggleUpdatePublisher" class="button secondary" type="button">Publicar nova versão</button>
@@ -108,7 +108,7 @@
           <section class="release-section update-clients"><div class="section-card-head"><div><h3>Clientes que precisam atualizar</h3><p>Somente instalações ativas ou em teste.</p></div></div><div id="outdatedClients" class="outdated-clients"></div></section>
         </div>
       </section>
-      <section class="finance-overview" data-central-panel="revenue" aria-labelledby="financeOverviewTitle">
+      <section class="finance-overview" data-central-panel="revenue" data-permission="finance" aria-labelledby="financeOverviewTitle">
         <div class="finance-overview-head">
           <div><p class="eyebrow">RESULTADO FINANCEIRO</p><h2 id="financeOverviewTitle">Receitas do licenciamento</h2><p id="financeCaption">Resumo das cobranças do período selecionado.</p></div>
           <div class="finance-filters"><label for="financeMonth">Período<input id="financeMonth" type="month"></label><label for="financePartnerFilter">Origem<select id="financePartnerFilter"><option value="">Todos os clientes</option><option value="direct">Clientes diretos</option></select></label><button id="printPartnerReport" class="button secondary" type="button">Gerar PDF</button></div>
@@ -116,14 +116,14 @@
         <div id="financeMetrics" class="finance-metrics" aria-live="polite"></div>
         <div id="financeRecent" class="finance-recent"></div>
       </section>
-      <section class="template-panel" data-central-panel="communication" aria-labelledby="templatePanelTitle">
+      <section class="template-panel" data-central-panel="communication" data-permission="communication" aria-labelledby="templatePanelTitle">
         <div class="template-panel-head"><div><p class="eyebrow">COMUNICAÇÃO</p><h2 id="templatePanelTitle">Modelos de mensagens</h2><p>Textos utilizados nos avisos internos e preparados para WhatsApp/e-mail.</p></div><button id="editTemplatesButton" class="button secondary" type="button">Editar modelos</button></div>
         <div id="emailProviderStatus" class="email-provider-status" aria-live="polite"></div>
         <div id="templateSummary" class="template-summary"></div>
         <div class="delivery-head"><strong>Últimos e-mails</strong><span>Registro das tentativas realizadas pela Central</span></div>
         <div id="emailDeliveryHistory" class="email-delivery-history"></div>
       </section>
-      <section class="downloads-panel" data-central-panel="downloads" aria-labelledby="downloadsPanelTitle">
+      <section class="downloads-panel" data-central-panel="downloads" data-permission="operations" aria-labelledby="downloadsPanelTitle">
         <div class="update-panel-head"><div><p class="eyebrow">DISTRIBUIÇÃO</p><h2 id="downloadsPanelTitle">Downloads do sistema</h2><p>Cadastre o link oficial hospedado no Google Drive ou no seu servidor. O arquivo continua sob seu controle.</p></div></div>
         <form id="downloadForm" class="update-publisher"><div class="update-fields"><div><label for="downloadTitle">Nome</label><input id="downloadTitle" maxlength="120" required placeholder="ZentryxFit para Windows"></div><div><label for="downloadPlatform">Plataforma</label><select id="downloadPlatform"><option value="windows">Windows</option><option value="android">Android</option><option value="ios">iOS</option><option value="other">Outro</option></select></div><div><label for="downloadUrl">Link HTTPS</label><input id="downloadUrl" type="url" required placeholder="https://drive.google.com/..."></div></div><label for="downloadDescription">Descrição</label><textarea id="downloadDescription" rows="2" maxlength="400" placeholder="Ex.: instalador estável recomendado para novos clientes."></textarea><p id="downloadError" class="error"></p><div class="modal-actions"><button id="downloadSaveButton" class="button primary" type="submit">Salvar download</button></div></form>
         <div id="downloadsList" class="release-section update-clients"></div>
@@ -154,7 +154,7 @@
           <option value="">Todos os estados</option><option value="trial">Em teste</option><option value="active">Ativas</option><option value="expired">Vencidas</option><option value="blocked">Bloqueadas</option><option value="inactive">Inativas</option><option value="tampered">Com alerta</option>
         </select>
       </section>
-      <section class="partners-panel" data-central-panel="partners" aria-labelledby="partnersTitle">
+      <section class="partners-panel" data-central-panel="partners" data-permission="partners" aria-labelledby="partnersTitle">
         <div class="partners-head"><div><p class="eyebrow">CANAIS COMERCIAIS</p><h2 id="partnersTitle">Parceiros e revendas</h2><p>Organize academias próprias e indicações de parceiros. A cobrança do parceiro é independente da cobrança que ele faz aos próprios clientes.</p></div><button id="newPartnerButton" class="button primary" type="button">Novo parceiro</button></div>
         <div id="partnersList" class="partners-list"></div>
       </section>

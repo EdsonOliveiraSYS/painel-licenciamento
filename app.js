@@ -10,6 +10,9 @@ const loginPhrases=['Dados em ordem, café em andamento.','Se a planilha abriu s
 let session=null,adminProfile=null,teamMembers=[],downloads=[],installations=[],financialCharges=[],delinquentCharges=[],messageTemplates=[],emailDeliveries=[],appReleases=[],partners=[],partnerSchemaError='',emailProviderConfigured=false,selected=null,issuing=false,editingBilling=null,savingBilling=false,savingTemplate=false,sendingEmail=false,publishingUpdate=false,delinquencies=[],clientView='active',centralPanel='overview',installationQrReader=null;
 
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const permissionCatalog={licenses:'Licenças e academias',finance:'Financeiro e cobranças',operations:'Atualizações e downloads',communication:'Comunicação',partners:'Parceiros e revendas'};
+const normalizedPermissions=value=>Array.isArray(value)?value.filter(permission=>Object.hasOwn(permissionCatalog,permission)):['licenses','finance'];
+const can=permission=>adminProfile?.role==='owner'||normalizedPermissions(adminProfile?.permissions).includes(permission);
 const formatDate=value=>value?new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
 const formatDateOnly=value=>value?new Date(`${String(value).slice(0,10)}T00:00:00`).toLocaleDateString('pt-BR'):'—';
 const formatMoneyCents=value=>(Number(value||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -46,7 +49,7 @@ async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
 
 async function ensureAdmin(){
   if(!session?.user?.id)throw new Error('Sessão administrativa ausente.');
-  const rows=await api(`/rest/v1/license_admins?select=user_id,email,full_name,role,active,partner_id&user_id=eq.${encodeURIComponent(session.user.id)}`),membership=rows?.[0];
+  const rows=await api(`/rest/v1/license_admins?select=user_id,email,full_name,role,active,partner_id,permissions&user_id=eq.${encodeURIComponent(session.user.id)}`),membership=rows?.[0];
   if(!membership?.active)throw new Error('Esta conta não está autorizada na Central ZentryxFit.');
   adminProfile=membership;
 }
@@ -81,7 +84,8 @@ async function finishInviteSetup(event){
   finally{button.disabled=false;button.textContent='Concluir acesso';}
 }
 
-function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
+function syncPermissionPanels(){document.querySelectorAll('[data-permission]').forEach(element=>element.classList.toggle('hidden',!can(element.dataset.permission)));}
+function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);syncPermissionPanels();$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
 function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('inviteSetup').classList.add('hidden');$('loginCard').classList.remove('hidden');$('loginView').classList.remove('hidden');$('password').value='';showLoginPhrase();}
 
 async function loadDelinquentCharges(){
@@ -243,7 +247,7 @@ function renderTeam(){
   const target=$('teamList');if(!target)return;
   const active=teamMembers.filter(member=>member.active).length;$('teamCount').textContent=`${active} ativo${active===1?'':'s'}`;
   if(!teamMembers.length){target.innerHTML='<div class="empty">Nenhum acesso cadastrado.</div>';return;}
-  target.innerHTML=teamMembers.map(member=>{const self=member.user_id===session?.user?.id,name=member.full_name||member.email||'Sem nome',role=member.role==='owner'?'Proprietário':'Operador',scope=member.partner_id?`Parceiro: ${partnerName(member.partner_id)}`:'Acesso geral';return `<article class="team-member ${member.active?'':'blocked'}"><div class="team-member-avatar">${escapeHtml(name.slice(0,1).toUpperCase())}</div><div class="team-member-data"><strong>${escapeHtml(name)}${self?' <small>(você)</small>':''}</strong><span>${escapeHtml(member.email||'E-mail não informado')}</span><small>${escapeHtml(scope)} · Desde ${formatDate(member.created_at)}</small></div><div class="team-member-state"><span class="badge ${member.active?'active':'blocked'}">${member.active?'Ativo':'Bloqueado'}</span><span class="team-role">${role}</span></div><div class="team-member-actions">${!self?`<button class="button secondary compact" data-team-role="${escapeHtml(member.user_id)}" data-role="${member.role==='owner'?'operator':'owner'}" type="button">${member.role==='owner'?'Tornar operador':'Tornar proprietário'}</button><button class="button secondary compact ${member.active?'danger':''}" data-team-active="${escapeHtml(member.user_id)}" data-active="${member.active?'false':'true'}" type="button">${member.active?'Bloquear':'Liberar'}</button>`:'<span class="team-self-note">Sua conta</span>'}</div></article>`;}).join('');
+  target.innerHTML=teamMembers.map(member=>{const self=member.user_id===session?.user?.id,name=member.full_name||member.email||'Sem nome',role=member.role==='owner'?'Proprietário':'Operador',scope=member.partner_id?`Parceiro: ${partnerName(member.partner_id)}`:'Acesso geral',permissions=normalizedPermissions(member.permissions),permissionEditor=member.role==='owner'?'<span class="team-self-note">Acesso total</span>':`<details class="team-permissions"><summary>Permissões</summary><div class="team-permission-options">${Object.entries(permissionCatalog).map(([key,label])=>`<label><input type="checkbox" data-team-permission="${key}" ${permissions.includes(key)?'checked':''}> ${label}</label>`).join('')}</div><button class="button secondary compact" data-team-save-permissions="${escapeHtml(member.user_id)}" type="button">Salvar permissões</button></details>`;return `<article class="team-member ${member.active?'':'blocked'}"><div class="team-member-avatar">${escapeHtml(name.slice(0,1).toUpperCase())}</div><div class="team-member-data"><strong>${escapeHtml(name)}${self?' <small>(você)</small>':''}</strong><span>${escapeHtml(member.email||'E-mail não informado')}</span><small>${escapeHtml(scope)} · Desde ${formatDate(member.created_at)}</small></div><div class="team-member-state"><span class="badge ${member.active?'active':'blocked'}">${member.active?'Ativo':'Bloqueado'}</span><span class="team-role">${role}</span></div><div class="team-member-actions">${!self?`<button class="button secondary compact" data-team-role="${escapeHtml(member.user_id)}" data-role="${member.role==='owner'?'operator':'owner'}" type="button">${member.role==='owner'?'Tornar operador':'Tornar proprietário'}</button><button class="button secondary compact ${member.active?'danger':''}" data-team-active="${escapeHtml(member.user_id)}" data-active="${member.active?'false':'true'}" type="button">${member.active?'Bloquear':'Liberar'}</button><button class="button secondary compact danger" data-team-delete="${escapeHtml(member.user_id)}" type="button">Excluir</button>`:'<span class="team-self-note">Sua conta</span>'}${permissionEditor}</div></article>`;}).join('');
 }
 async function loadTeam(){
   if(adminProfile?.role!=='owner')return;
@@ -260,6 +264,7 @@ async function updateTeamMember(userId,changes){
   if(!confirm(description))return;
   try{await teamApi('update',{userId,...changes});showToast('Acesso da equipe atualizado.');await loadTeam();}catch(error){showToast(error.message,true);}
 }
+async function deleteTeamMember(userId){const member=teamMembers.find(item=>item.user_id===userId);if(!member)return;if(!confirm(`Excluir permanentemente o acesso de ${member.full_name||member.email}? A pessoa perderá o acesso à Central e precisará de um novo convite para voltar.`))return;try{await teamApi('delete',{userId});showToast('Acesso removido da equipe.');await loadTeam();}catch(error){showToast(error.message,true);}}
 
 function applyInstallationScope(rows){
   if(adminProfile?.role!=='operator')return rows;
@@ -271,7 +276,7 @@ function applyInstallationScope(rows){
 }
 
 async function loadSupplementalData(){
-  const tasks=[loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases(),loadPartners(false),loadTeam(),loadDownloads(),loadMessageTemplates(false),loadEmailIntegration(false)];
+  const tasks=[can('finance')?loadFinancialCharges(false):Promise.resolve(),can('finance')?loadDelinquentCharges():Promise.resolve(),can('operations')?loadAppReleases():Promise.resolve(),(can('partners')||adminProfile?.role==='owner')?loadPartners(false):Promise.resolve(),loadTeam(),can('operations')?loadDownloads():Promise.resolve(),can('communication')?loadMessageTemplates(false):Promise.resolve(),can('communication')?loadEmailIntegration(false):Promise.resolve()];
   const results=await Promise.allSettled(tasks),rejected=results.find(result=>result.status==='rejected');
   if(rejected)$('financeCaption').textContent=`Alguns indicadores não puderam ser atualizados: ${rejected.reason?.message||'tente novamente.'}`;
   renderTeamPartnerOptions();
@@ -526,7 +531,7 @@ $('partnerSaveButton').addEventListener('click',savePartner);
 $('billingEditEnforcementMode').addEventListener('change',toggleBillingAutomation);
 $('teamInviteForm').addEventListener('submit',inviteTeamMember);
 $('downloadForm').addEventListener('submit',saveDownload);
-$('teamList').addEventListener('click',event=>{const role=event.target.closest('[data-team-role]'),active=event.target.closest('[data-team-active]');if(role)updateTeamMember(role.dataset.teamRole,{role:role.dataset.role});if(active)updateTeamMember(active.dataset.teamActive,{active:active.dataset.active==='true'});});
+$('teamList').addEventListener('click',event=>{const role=event.target.closest('[data-team-role]'),active=event.target.closest('[data-team-active]'),remove=event.target.closest('[data-team-delete]'),savePermissions=event.target.closest('[data-team-save-permissions]');if(role)updateTeamMember(role.dataset.teamRole,{role:role.dataset.role});if(active)updateTeamMember(active.dataset.teamActive,{active:active.dataset.active==='true'});if(remove)deleteTeamMember(remove.dataset.teamDelete);if(savePermissions){const card=savePermissions.closest('.team-member'),permissions=[...card.querySelectorAll('[data-team-permission]:checked')].map(input=>input.dataset.teamPermission);updateTeamMember(savePermissions.dataset.teamSavePermissions,{permissions});}});
 $('toggleUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(true));
 $('cancelUpdatePublisher').addEventListener('click',()=>toggleUpdatePublisher(false));
 $('updatePublisher').addEventListener('submit',publishUpdate);
