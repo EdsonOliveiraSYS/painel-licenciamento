@@ -37,7 +37,7 @@ async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
   let response;
   try{response=await fetch(`${SUPABASE_URL}${pathname}`,{method,headers:{apikey:PUBLISHABLE_KEY,...(auth&&session?.access_token?{authorization:`Bearer ${session.access_token}`} : {}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:controller.signal});}
-  catch(error){if(error?.name==='AbortError')throw new Error('A Central demorou para responder. Atualize para tentar novamente.');throw error;}
+  catch(error){if(error?.name==='AbortError')throw new Error('A Central demorou para responder. Atualize para tentar novamente.');if(error instanceof TypeError&&/fetch/i.test(error.message||''))throw new Error('Não foi possível conectar à Central agora. Verifique a internet e atualize a página.');throw error;}
   finally{clearTimeout(timeout);}
   if(response.status===401&&auth&&retry&&session?.refresh_token){await refreshSession();return api(pathname,{method,body,auth,retry:false});}
   const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null;}catch(_){data=raw;}
