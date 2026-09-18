@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · ZentryxFit</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=central-glass-themes-1">
+  <link rel="stylesheet" href="style.css?v=central-black-dashboard-1">
 </head>
 <body>
   <section id="loginView" class="login-view">
@@ -61,6 +61,10 @@
           <button class="button secondary" type="button" data-scroll-target="financeOverviewTitle">Ver financeiro</button>
         </div>
         <div id="overviewInsightsGrid" class="overview-insights-grid" aria-live="polite"></div>
+      </section>
+      <section class="overview-charts" data-central-panel="overview" aria-labelledby="overviewChartsTitle">
+        <div class="overview-charts-head"><div><p class="eyebrow">PAINEL VISUAL</p><h2 id="overviewChartsTitle">Indicadores da Central</h2><p>Distribuição das licenças e leitura financeira do período selecionado.</p></div></div>
+        <div id="overviewChartsGrid" class="overview-charts-grid" aria-live="polite"></div>
       </section>
       <section class="update-panel" data-central-panel="updates" aria-labelledby="updatePanelTitle">
         <div class="update-panel-head">
@@ -257,6 +261,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=central-glass-themes-1" defer></script>
+  <script src="app.js?v=central-black-dashboard-1" defer></script>
 </body>
 </html>

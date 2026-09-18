@@ -34,7 +34,11 @@ async function refreshSession(){
 
 async function api(pathname,{method='GET',body,auth=true,retry=true}={}){
   if(auth&&session?.expires_at&&Date.now()/1000>Number(session.expires_at)-60)await refreshSession();
-  const response=await fetch(`${SUPABASE_URL}${pathname}`,{method,headers:{apikey:PUBLISHABLE_KEY,...(auth&&session?.access_token?{authorization:`Bearer ${session.access_token}`} : {}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+  let response;
+  try{response=await fetch(`${SUPABASE_URL}${pathname}`,{method,headers:{apikey:PUBLISHABLE_KEY,...(auth&&session?.access_token?{authorization:`Bearer ${session.access_token}`} : {}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:controller.signal});}
+  catch(error){if(error?.name==='AbortError')throw new Error('A Central demorou para responder. Atualize para tentar novamente.');throw error;}
+  finally{clearTimeout(timeout);}
   if(response.status===401&&auth&&retry&&session?.refresh_token){await refreshSession();return api(pathname,{method,body,auth,retry:false});}
   const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null;}catch(_){data=raw;}
   if(!response.ok)throw new Error(data?.error_description||data?.message||data?.msg||data?.error||`Falha HTTP ${response.status}`);return data;
@@ -236,21 +240,36 @@ async function updateTeamMember(userId,changes){
   try{await teamApi('update',{userId,...changes});showToast('Acesso da equipe atualizado.');await loadTeam();}catch(error){showToast(error.message,true);}
 }
 
+function applyInstallationScope(rows){
+  if(adminProfile?.role!=='operator')return rows;
+  const partnerId=adminProfile.partner_id||null;
+  return rows.filter(item=>(item.licenses||[]).some(license=>{
+    const assignedPartner=license.partner_id||null;
+    return !assignedPartner||assignedPartner===partnerId;
+  }));
+}
+
+async function loadSupplementalData(){
+  const tasks=[loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases(),loadPartners(false),loadTeam(),loadDownloads(),loadMessageTemplates(false),loadEmailIntegration(false)];
+  const results=await Promise.allSettled(tasks),rejected=results.find(result=>result.status==='rejected');
+  if(rejected)$('financeCaption').textContent=`Alguns indicadores não puderam ser atualizados: ${rejected.reason?.message||'tente novamente.'}`;
+  renderTeamPartnerOptions();
+  render();
+}
+
 async function loadInstallations(){
   $('installationList').innerHTML='<div class="empty">Atualizando a Central...</div>';
   try{
     await ensureAdmin();
     const select=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,environment,academy_id,update_channel,update_auto_enabled,update_status,update_target_version,update_checked_at,update_downloaded_at,update_error,academies(id,name,legal_name,cnpj,country_code,tax_id,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,partner_id,billing_payer,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
-    try{installations=await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[];if(adminProfile?.role==='operator')installations=adminProfile.partner_id?installations.filter(item=>(item.licenses||[]).some(license=>license.partner_id===adminProfile.partner_id)):[];}
+    try{installations=applyInstallationScope(await api(`/rest/v1/installations?select=${select}&order=last_seen_at.desc`)||[]);}
     catch(error){
       if(!/partner_id|billing_payer/i.test(error.message))throw error;
       const legacy=encodeURIComponent('id,installation_id,machine_hash,app_version,installed_at,first_seen_at,last_seen_at,trial_ends_at,status,tamper_reason,environment,academy_id,update_channel,update_auto_enabled,update_status,update_target_version,update_checked_at,update_downloaded_at,update_error,academies(id,name,legal_name,cnpj,responsible_name,phone,email,status),licenses(id,issued_at,expires_at,status,notes,billing_cycle,billing_amount_cents,billing_due_date,billing_status,paid_at,billing_collection_mode,billing_notice_enabled,billing_notice_days,billing_notification_channel,billing_enforcement_mode,billing_grace_days,billing_auto_blocked_at)');
-      installations=await api(`/rest/v1/installations?select=${legacy}&order=last_seen_at.desc`)||[];
+      installations=applyInstallationScope(await api(`/rest/v1/installations?select=${legacy}&order=last_seen_at.desc`)||[]);
     }
-    try{await Promise.all([loadFinancialCharges(false),loadDelinquentCharges(),loadAppReleases(),loadPartners(false),loadTeam(),loadDownloads()]);renderTeamPartnerOptions();}catch(error){financialCharges=[];delinquentCharges=[];appReleases=[];partners=[];$('financeCaption').textContent=`Não foi possível carregar parte da Central: ${error.message}`;}
-    try{await loadMessageTemplates(false);}catch(error){messageTemplates=[];$('templateSummary').innerHTML=`<div class="finance-empty">${escapeHtml(error.message)}</div>`;}
-    try{await loadEmailIntegration(false);}catch(error){emailProviderConfigured=false;emailDeliveries=[];$('emailProviderStatus').innerHTML=`<span class="status-dot off"></span><div><strong>Integração de e-mail indisponível</strong><small>${escapeHtml(error.message)}</small></div>`;}
     render();
+    void loadSupplementalData();
   }catch(error){$('installationList').innerHTML=`<div class="empty">${escapeHtml(error.message)}</div>`;if(/sessão|autorizada/i.test(error.message))logout();}
 }
 
@@ -260,6 +279,7 @@ function render(){
   const overdueTotal=delinquencies.reduce((sum,item)=>sum+Number(item.charge.amount_cents||0),0);
   $('metrics').innerHTML=[['Total',installations.length,'neutral'],['Em teste',count('trial'),'trial'],['Ativas',count('active'),'active'],['Vencidas',count('expired'),'expired'],['Bloqueadas',count('blocked')+count('tampered'),'blocked'],['Em atraso',formatMoneyCents(overdueTotal),'overdue']].map(([label,total,tone])=>`<article class="metric metric-${tone}"><span>${label}</span><strong>${total}</strong></article>`).join('');
   renderOverviewInsights();
+  renderOverviewCharts();
   renderUpdateCenter();
   renderFinancialSummary();
   renderPartnerOptions();
@@ -284,6 +304,15 @@ function render(){
     const environment=item.environment||'production';
     return `<article class="installation"><div><h3>${escapeHtml(academy.name||'Academia em configuração')}</h3><span class="badge ${item.status}">${labels[item.status]||item.status}</span><span class="badge environment ${escapeHtml(environment)}">${escapeHtml(environmentLabels[environment]||'Produção')}</span><div class="muted">Documento fiscal: ${escapeHtml(fiscalId(academy)||'não informado')} · ${escapeHtml(countryName(academy.country_code))}</div></div><div class="facts"><div><strong>Instalação:</strong> ${formatDate(item.installed_at)}</div><div><strong>Último contato:</strong> ${formatDate(item.last_seen_at)}</div><div><strong>Versão:</strong> ${escapeHtml(item.app_version||'—')}</div></div><div class="facts"><div><strong>Plano:</strong> ${cycleLabel}</div><div><strong>Origem:</strong> ${activeLicense?.partner_id?escapeHtml(partnerName(activeLicense.partner_id)):'Direta'}</div><div><strong>Licença até:</strong> ${formatDate(activeLicense?.expires_at)}</div></div><div class="actions"><button class="button primary" data-issue="${item.id}" type="button">Licenciar</button>${activeLicense?`<button class="button secondary" data-billing="${item.id}" type="button">Editar licença</button><button class="button secondary danger" data-license-delete="${activeLicense.id}" type="button">Excluir licença</button>`:''}<button class="button secondary" data-status="${blocked?'trial':'blocked'}" data-id="${item.id}" type="button">${blocked?'Desbloquear':'Bloquear'}</button><button class="button secondary" data-status="inactive" data-id="${item.id}" type="button">Inativar</button>${canDeleteInstallation?`<button class="button secondary danger" data-installation-delete="${item.id}" type="button">Excluir instalação</button>`:''}</div></article>`;
   }).join('');
+}
+
+function renderOverviewCharts(){
+  const target=$('overviewChartsGrid');if(!target)return;
+  const statusData=[['Ativas',installations.filter(item=>item.status==='active').length,'active'],['Em teste',installations.filter(item=>item.status==='trial').length,'trial'],['Vencidas',installations.filter(item=>item.status==='expired').length,'expired'],['Bloqueadas',installations.filter(item=>['blocked','tampered'].includes(item.status)).length,'blocked'],['Inativas',installations.filter(item=>item.status==='inactive').length,'inactive']],total=Math.max(installations.length,1);
+  const bounds=monthBounds($('financeMonth').value)||monthBounds(currentMonthIso()),due=financialCharges.filter(charge=>charge.due_date>=bounds.start&&charge.due_date<bounds.end&&!['cancelled','waived'].includes(charge.status));
+  const received=financialCharges.filter(charge=>charge.paid_at&&charge.paid_at>=bounds.startTime&&charge.paid_at<bounds.endTime).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0),open=due.filter(charge=>['pending','overdue'].includes(charge.status)).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0),overdue=due.filter(charge=>charge.status==='overdue'||(charge.status==='pending'&&charge.due_date<todayIso())).reduce((sum,charge)=>sum+Number(charge.amount_cents||0),0);
+  const financialData=[['Recebido',received,'received'],['Em aberto',open,'open'],['Vencido',overdue,'overdue']],financialMax=Math.max(...financialData.map(item=>item[1]),1);
+  target.innerHTML=`<article class="chart-card"><div class="chart-card-head"><h3>Licenças por situação</h3><span>${installations.length} instalação(ões)</span></div><div class="bar-chart">${statusData.map(([label,value,tone])=>`<div class="chart-row"><span>${label}</span><div class="chart-track"><i class="${tone}" style="width:${Math.round(value/total*100)}%"></i></div><strong>${value}</strong></div>`).join('')}</div></article><article class="chart-card"><div class="chart-card-head"><h3>Financeiro do mês</h3><span>${$('financeMonth').value||currentMonthIso()}</span></div><div class="bar-chart financial">${financialData.map(([label,value,tone])=>`<div class="chart-row"><span>${label}</span><div class="chart-track"><i class="${tone}" style="width:${Math.round(value/financialMax*100)}%"></i></div><strong>${formatMoneyCents(value)}</strong></div>`).join('')}</div></article>`;
 }
 
 function renderOverviewInsights(){
