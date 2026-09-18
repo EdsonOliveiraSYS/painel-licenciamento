@@ -8,11 +8,11 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src https://czdvttwkhpfeyekqcbcy.supabase.co https://czdvttwkhpfeyekqcbcy.storage.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
   <title>Central de Licenças · ZentryxFit</title>
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="style.css?v=central-black-dashboard-2">
+  <link rel="stylesheet" href="style.css?v=central-black-dashboard-3">
 </head>
 <body>
   <section id="loginView" class="login-view">
-    <main class="login-card">
+    <main id="loginCard" class="login-card">
       <div class="brand-mark" aria-hidden="true"><img src="assets/zentryxfit.svg" alt=""></div>
       <p class="eyebrow">ZENTRYXFIT</p>
       <h1>Central de Licenças</h1>
@@ -26,6 +26,22 @@
         <button id="loginButton" class="button primary full" type="submit">Entrar</button>
       </form>
       <p class="security-note">Sua senha é enviada diretamente ao Supabase e não fica salva neste site.</p>
+      <p class="product-signature">Um Produto <strong>R&amp;R Tecnologia</strong></p>
+    </main>
+    <main id="inviteSetup" class="login-card hidden" aria-labelledby="inviteSetupTitle">
+      <div class="brand-mark" aria-hidden="true"><img src="assets/zentryxfit.svg" alt=""></div>
+      <p class="eyebrow">PRIMEIRO ACESSO</p>
+      <h1 id="inviteSetupTitle">Defina sua senha</h1>
+      <p class="lead">Seu convite foi confirmado. Crie uma senha para entrar na Central de Licenças.</p>
+      <form id="inviteSetupForm">
+        <label for="invitePassword">Nova senha</label>
+        <input id="invitePassword" type="password" autocomplete="new-password" required minlength="8">
+        <label for="invitePasswordConfirm">Confirmar senha</label>
+        <input id="invitePasswordConfirm" type="password" autocomplete="new-password" required minlength="8">
+        <p id="inviteSetupError" class="error" role="alert" aria-live="polite"></p>
+        <button id="inviteSetupButton" class="button primary full" type="submit">Concluir acesso</button>
+      </form>
+      <p class="security-note">Use ao menos 8 caracteres. Depois, você entrará diretamente na Central.</p>
       <p class="product-signature">Um Produto <strong>R&amp;R Tecnologia</strong></p>
     </main>
     <aside class="login-quote" aria-live="polite">
@@ -261,6 +277,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
-  <script src="app.js?v=central-black-dashboard-2" defer></script>
+  <script src="app.js?v=central-black-dashboard-3" defer></script>
 </body>
 </html>

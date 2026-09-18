@@ -60,8 +60,29 @@ async function login(event){
   finally{$('loginButton').disabled=false;$('loginButton').textContent='Entrar';}
 }
 
+function showInviteSetupFromHash(){
+  const params=new URLSearchParams(window.location.hash.slice(1));
+  const accessToken=params.get('access_token'),refreshToken=params.get('refresh_token');
+  if(!accessToken||!refreshToken)return false;
+  const expiresIn=Number(params.get('expires_in')||0),expiresAt=Number(params.get('expires_at')||0)||Math.floor(Date.now()/1000)+expiresIn;
+  saveSession({access_token:accessToken,refresh_token:refreshToken,expires_at:expiresAt,expires_in:expiresIn,token_type:params.get('token_type')||'bearer',user:null});
+  history.replaceState(null,'',`${window.location.pathname}${window.location.search}`);
+  $('loginCard').classList.add('hidden');$('inviteSetup').classList.remove('hidden');$('invitePassword').focus();
+  return true;
+}
+
+async function finishInviteSetup(event){
+  event.preventDefault();const password=$('invitePassword').value,confirmation=$('invitePasswordConfirm').value,error=$('inviteSetupError'),button=$('inviteSetupButton');error.textContent='';
+  if(password.length<8){error.textContent='Use uma senha com pelo menos 8 caracteres.';return;}
+  if(password!==confirmation){error.textContent='As senhas não coincidem.';return;}
+  button.disabled=true;button.textContent='Concluindo...';
+  try{const data=await api('/auth/v1/user',{method:'PUT',body:{password}});if(data?.user)session.user=data.user;saveSession(session);await ensureAdmin();$('inviteSetup').classList.add('hidden');openDashboard();await loadInstallations();showToast('Acesso configurado. Bem-vindo à Central!');}
+  catch(err){error.textContent=err.message;}
+  finally{button.disabled=false;button.textContent='Concluir acesso';}
+}
+
 function openDashboard(){const owner=adminProfile?.role==='owner';$('accountEmail').textContent=session.user?.email||'';$('teamPanel').classList.toggle('hidden',!owner);$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');}
-function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('loginView').classList.remove('hidden');$('password').value='';showLoginPhrase();}
+function logout(){saveSession(null);adminProfile=null;teamMembers=[];installations=[];financialCharges=[];delinquentCharges=[];messageTemplates=[];emailDeliveries=[];emailProviderConfigured=false;$('teamPanel').classList.add('hidden');$('appView').classList.add('hidden');$('inviteSetup').classList.add('hidden');$('loginCard').classList.remove('hidden');$('loginView').classList.remove('hidden');$('password').value='';showLoginPhrase();}
 
 async function loadDelinquentCharges(){
   const fields='id,license_id,installation_id,academy_id,billing_cycle,amount_cents,due_date,status,paid_at';
@@ -493,7 +514,7 @@ async function deleteInstallation(id){
   catch(error){showToast(`Não foi possível excluir a instalação: ${error.message}`,true);}
 }
 
-$('loginForm').addEventListener('submit',login);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('editTemplatesButton').addEventListener('click',openTemplateModal);$('templateSelect').addEventListener('change',fillTemplateForm);$('templateSaveButton').addEventListener('click',saveMessageTemplate);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);if(event.target.dataset.licenseDelete)deleteLicense(event.target.dataset.licenseDelete);if(event.target.dataset.installationDelete)deleteInstallation(event.target.dataset.installationDelete);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.email)sendBillingEmail(event.target.dataset.email);if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));document.querySelectorAll('[data-close-template]').forEach(button=>button.addEventListener('click',closeTemplateModal));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('billingEmailButton').addEventListener('click',()=>editingBilling&&sendBillingEmail(editingBilling.license.id));$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();if(!$('templateModal').classList.contains('hidden'))closeTemplateModal();}});
+$('loginForm').addEventListener('submit',login);$('inviteSetupForm').addEventListener('submit',finishInviteSetup);$('logoutButton').addEventListener('click',logout);$('refreshButton').addEventListener('click',loadInstallations);$('exportDelinquency').addEventListener('click',exportDelinquencies);$('search').addEventListener('input',render);$('statusFilter').addEventListener('change',render);$('financeMonth').addEventListener('change',()=>loadFinancialCharges().catch(error=>showToast(error.message,true)));$('editTemplatesButton').addEventListener('click',openTemplateModal);$('templateSelect').addEventListener('change',fillTemplateForm);$('templateSaveButton').addEventListener('click',saveMessageTemplate);$('installationList').addEventListener('click',event=>{if(event.target.dataset.issue)openLicense(event.target.dataset.issue);if(event.target.dataset.billing)openBilling(event.target.dataset.billing);if(event.target.dataset.id)setStatus(event.target.dataset.id,event.target.dataset.status);if(event.target.dataset.licenseDelete)deleteLicense(event.target.dataset.licenseDelete);if(event.target.dataset.installationDelete)deleteInstallation(event.target.dataset.installationDelete);});$('delinquencyList').addEventListener('click',event=>{if(event.target.dataset.email)sendBillingEmail(event.target.dataset.email);if(event.target.dataset.paid)markPaid(event.target.dataset.paid);});document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',closeLicense));document.querySelectorAll('[data-close-billing]').forEach(button=>button.addEventListener('click',closeBilling));document.querySelectorAll('[data-close-template]').forEach(button=>button.addEventListener('click',closeTemplateModal));$('issueButton').addEventListener('click',issue);$('billingSaveButton').addEventListener('click',saveBilling);$('billingEmailButton').addEventListener('click',()=>editingBilling&&sendBillingEmail(editingBilling.license.id));$('copyToken').addEventListener('click',copyToken);$('licenseComplimentary').addEventListener('change',toggleComplimentary);$('licenseBillingCycle').addEventListener('change',toggleBillingCycle);document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!$('licenseModal').classList.contains('hidden'))closeLicense();if(!$('billingModal').classList.contains('hidden'))closeBilling();if(!$('templateModal').classList.contains('hidden'))closeTemplateModal();}});
 $('themeToggle').addEventListener('click',()=>applyCentralTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('billingEditNoticeEnabled').addEventListener('change',toggleBillingAutomation);
 $('financePartnerFilter').addEventListener('change',renderFinancialSummary);
@@ -549,4 +570,4 @@ switchCentralPanel(centralPanel);
 $('financeMonth').value=currentMonthIso();
 restoreCentralTheme();
 showLoginPhrase();
-(async()=>{try{const saved=sessionStorage.getItem(SESSION_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY);if(!saved)return;session=JSON.parse(saved);saveSession(session);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
+(async()=>{if(showInviteSetupFromHash())return;try{const saved=sessionStorage.getItem(SESSION_KEY)||sessionStorage.getItem(LEGACY_SESSION_KEY);if(!saved)return;session=JSON.parse(saved);saveSession(session);await ensureAdmin();openDashboard();await loadInstallations();}catch(_){logout();}})();
